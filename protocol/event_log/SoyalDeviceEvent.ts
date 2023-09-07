@@ -1,10 +1,10 @@
 import {DeserializeResult, Serializable} from "../Serializable";
-import {DeviceEventLogInvalidCard03H} from "./DeviceEventLogInvalidCard03H";
-import {DeviceEventLogNormalAccess0BH} from "./DeviceEventLogNormalAccess0BH";
+import {DeviceEventInvalidCard03H} from "./DeviceEventInvalidCard03H";
+import {DeviceEventNormalAccess0BH} from "./DeviceEventNormalAccess0BH";
 import {MAX_UINT8} from "../Commons";
 import {PacketFormatError, PacketValueError} from "../Errors";
 
-export type DeviceEventLog_t = DeviceEventLogInvalidCard03H | DeviceEventLogNormalAccess0BH;
+export type DeviceEventLog_t = DeviceEventInvalidCard03H | DeviceEventNormalAccess0BH;
 
 // noinspection JSUnusedGlobalSymbols
 export enum LogEntryEventType {
@@ -19,10 +19,10 @@ export enum LogEntryEventType {
     ANTI_PASS_BACK_ERROR = 0x1E,
 }
 
-export interface IDeviceEventLog extends Serializable {
+export interface IDeviceEvent extends Serializable {
 }
 
-export class SoyalEventLog implements IDeviceEventLog {
+export class SoyalDeviceEvent implements IDeviceEvent {
     // data fields
     public readonly eventType: LogEntryEventType;
     public readonly readerID: number;
@@ -38,7 +38,7 @@ export class SoyalEventLog implements IDeviceEventLog {
         this.logEntry = logPayload;
     }
 
-    public static deserialize(buffer: Uint8Array): DeserializeResult<SoyalEventLog> {
+    public static deserialize(buffer: Uint8Array): DeserializeResult<SoyalDeviceEvent> {
         if (buffer.length < 2) {
             throw new PacketFormatError("buffer length is too short");
         }
@@ -52,14 +52,14 @@ export class SoyalEventLog implements IDeviceEventLog {
 
         switch (eventType) {
             case LogEntryEventType.INVALID_CARD: {
-                const result = DeviceEventLogInvalidCard03H.deserialize(logPayloadBuffer);
+                const result = DeviceEventInvalidCard03H.deserialize(logPayloadBuffer);
 
                 payload = result.instance;
                 bufferConsumed = result.bufferConsumed;
                 break;
             }
             case LogEntryEventType.NORMAL_ACCESS: {
-                const result = DeviceEventLogNormalAccess0BH.deserialize(logPayloadBuffer);
+                const result = DeviceEventNormalAccess0BH.deserialize(logPayloadBuffer);
 
                 payload = result.instance;
                 bufferConsumed = result.bufferConsumed;
@@ -74,7 +74,7 @@ export class SoyalEventLog implements IDeviceEventLog {
         }
 
         return {
-            instance: new SoyalEventLog(eventType, readerID, payload),
+            instance: new SoyalDeviceEvent(eventType, readerID, payload),
             bufferConsumed: bufferConsumed,
         };
     }

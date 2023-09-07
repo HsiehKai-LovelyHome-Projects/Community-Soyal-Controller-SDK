@@ -8,9 +8,9 @@ import {
 } from "../Commons";
 import {PacketFormatError, PacketValueError} from "../Errors";
 import {DeserializeResult} from "../Serializable";
-import {IDeviceEventLogPayload} from "./SoyalEventLog";
+import {IDeviceEventLogPayload} from "./SoyalDeviceEvent";
 
-export class DeviceEventLogInvalidCard03H implements IDeviceEventLogPayload {
+export class DeviceEventInvalidCard03H implements IDeviceEventLogPayload {
     // data fields
     public readonly timestamp: Date;
     public readonly readerID: number;
@@ -52,7 +52,7 @@ export class DeviceEventLogInvalidCard03H implements IDeviceEventLogPayload {
         this.sorBalance = sorBalance;
     }
 
-    public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceEventLogInvalidCard03H> {
+    public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceEventInvalidCard03H> {
         if (buffer.length < 24) {
             throw new PacketFormatError("not enough data");
         }
@@ -64,7 +64,7 @@ export class DeviceEventLogInvalidCard03H implements IDeviceEventLogPayload {
         const timestamp = timestampFromSoyalFormat(buffer);
 
         return {
-            instance: new DeviceEventLogInvalidCard03H(timestamp, buffer[7], composeUInt16MSBLSB(buffer[8], buffer[9]),
+            instance: new DeviceEventInvalidCard03H(timestamp, buffer[7], composeUInt16MSBLSB(buffer[8], buffer[9]),
                 buffer[10], buffer[11], buffer[12], buffer[13], composeUInt16MSBLSB(buffer[14], buffer[15]),
                 buffer[17], composeUInt16MSBLSB(buffer[18], buffer[19]),
                 composeUInt16MSBLSB(buffer[20], buffer[21]), composeUInt16MSBLSB(buffer[22], buffer[23])),

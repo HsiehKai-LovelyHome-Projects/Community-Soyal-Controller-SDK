@@ -1,22 +1,26 @@
-import {ISoyalCommandPayload} from "./SoyalCommandCode";
 import {PacketFormatError} from "../Errors";
 import {DeserializeResult} from "../Serializable";
+import {SoyalCommand, SoyalCommandCode} from "./SoyalCommand";
+import assert from "assert";
 
-export class GetDeviceStatusCommandPayload18H implements ISoyalCommandPayload {
+export class GetDeviceStatusCommand18H extends SoyalCommand {
 
     public readonly timestamp: Date | null;
 
     public constructor(timestamp: Date | null) {
+        super(SoyalCommandCode.GET_DEVICE_STATUS_18H);
+
         this.timestamp = timestamp;
     }
 
-    public static deserialize(buffer: Uint8Array): DeserializeResult<GetDeviceStatusCommandPayload18H> {
+    public static deserialize(buffer: Uint8Array): DeserializeResult<GetDeviceStatusCommand18H> {
+        assert(buffer.length >= 1 && buffer[0] === SoyalCommandCode.GET_DEVICE_STATUS_18H);
+
         if (buffer.length == 0) {
             return {
-                instance: new GetDeviceStatusCommandPayload18H(null),
+                instance: new GetDeviceStatusCommand18H(null),
                 bufferConsumed: 0,
             };
-
         }
 
         if (buffer.length < 10) {
@@ -34,13 +38,12 @@ export class GetDeviceStatusCommandPayload18H implements ISoyalCommandPayload {
         const timestamp = new Date(year, month, date, hour, minute, second);
 
         return {
-            instance: new GetDeviceStatusCommandPayload18H(timestamp),
+            instance: new GetDeviceStatusCommand18H(timestamp),
             bufferConsumed: 10,
         };
-
     }
 
-    serialize(): Uint8Array {
+    public serialize(): Uint8Array {
         if (this.timestamp) {
             const payload = new Uint8Array(10);
             payload[0] = this.timestamp.getSeconds(); // Second: 0 - 59
@@ -54,9 +57,12 @@ export class GetDeviceStatusCommandPayload18H implements ISoyalCommandPayload {
             payload[8] = this.timestamp.getFullYear() % 100;
             payload[9] = 0; // 0x00
 
-            return payload;
+            return new Uint8Array([...super.serialize(), ...payload]);
         } else {
-            return Buffer.from([]);
+            return super.serialize();
         }
+    }
+
+    public handleResponse(data: Uint8Array): void {
     }
 }

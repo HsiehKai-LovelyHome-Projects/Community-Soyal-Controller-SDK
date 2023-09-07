@@ -1,7 +1,7 @@
 import {DeserializeResult, Serializable} from "../Serializable";
 import {PacketFormatError, UnknownProtocol} from "../Errors";
 import {ISoyalResponsePayload} from "./SoyalResponse";
-import {SoyalEventLog} from "../event_log/SoyalEventLog";
+import {SoyalDeviceEvent} from "../event_log/SoyalDeviceEvent";
 import {DeviceStatusEventPayload00H} from "./device_status_event/DeviceStatusEventPayload00H";
 import {DeviceStatusEventPayload01H} from "./device_status_event/DeviceStatusEventPayload01H";
 import {DeviceStatusEventPayload02H} from "./device_status_event/DeviceStatusEventPayload02H";
@@ -24,9 +24,9 @@ export enum DeviceStatusEventType {
 export class DeviceStatusEventResponse09H implements ISoyalResponsePayload {
 
     public readonly event: DeviceEventPayload_t;
-    public readonly deviceLog ?: SoyalEventLog;
+    public readonly deviceLog ?: SoyalDeviceEvent;
 
-    public constructor(event: DeviceEventPayload_t, deviceEventLog ?: SoyalEventLog) {
+    public constructor(event: DeviceEventPayload_t, deviceEventLog ?: SoyalDeviceEvent) {
         this.event = event;
         this.deviceLog = deviceEventLog;
     }
@@ -67,9 +67,9 @@ export class DeviceStatusEventResponse09H implements ISoyalResponsePayload {
 
         data = buffer.slice(eventDataLength);
 
-        let eventLog: SoyalEventLog | undefined;
+        let eventLog: SoyalDeviceEvent | undefined;
         if (data.length > 0) {
-            const result = SoyalEventLog.deserialize(data);
+            const result = SoyalDeviceEvent.deserialize(data);
 
             eventLog = result.instance;
             data = data.slice(result.bufferConsumed);

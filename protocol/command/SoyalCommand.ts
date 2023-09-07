@@ -1,50 +1,48 @@
 import {DeserializeResult, Serializable} from "../Serializable";
-import {GetOldestDeviceEventLogCommandPayload25H} from "./GetOldestDeviceEventLogCommandPayload25H";
+import {GetOldestDeviceEventLogCommand25H} from "./GetOldestDeviceEventLogCommand25H";
 import {PacketFormatError, UnknownProtocol} from "../Errors";
-import {GetDeviceStatusCommandPayload18H} from "./GetDeviceStatusCommandPayload18H";
+import {GetDeviceStatusCommand18H} from "./GetDeviceStatusCommand18H";
 
 export interface ISoyalCommand extends Serializable {
+    handleResponse(data: Uint8Array): void;
 }
 
 export enum SoyalCommandCode {
-    GET_DEVICE_STATUS = 0x18, // event polling
+    GET_DEVICE_STATUS_18H = 0x18, // event polling
 
-    GET_OLDEST_DEVICE_EVENT_LOG = 0x25,
+    GET_OLDEST_DEVICE_EVENT_LOG_25H = 0x25,
 }
 
-export type SoyalCommandPayload_t = GetDeviceStatusCommandPayload18H | GetOldestDeviceEventLogCommandPayload25H;
+export type SoyalCommandPayload_t = GetDeviceStatusCommand18H | GetOldestDeviceEventLogCommand25H;
 
-export class SoyalCommand implements ISoyalCommand {
+export abstract class SoyalCommand implements ISoyalCommand {
     // data fields
     public readonly commandCode: SoyalCommandCode;
-    public readonly payload: SoyalCommandPayload_t;
 
-    public constructor(commandCode: SoyalCommandCode, payload: SoyalCommandPayload_t) {
+    protected constructor(commandCode: SoyalCommandCode) {
         this.commandCode = commandCode;
-        this.payload = payload;
     }
 
-    public static deserialize(buffer: Uint8Array): DeserializeResult<SoyalCommand> {
+    public static deserialize(buffer: Uint8Array): DeserializeResult<SoyalCommandPayload_t> {
         if (buffer.length < 1) {
             throw new Error("buffer length is too short");
         }
 
         const commandID = buffer[0];
-        buffer = buffer.subarray(1);
 
-        let payload: SoyalCommandPayload_t;
+        let instance: SoyalCommandPayload_t;
         let bufferConsumed: number;
 
         switch (commandID) {
-            case SoyalCommandCode.GET_DEVICE_STATUS: {
-                const result = GetDeviceStatusCommandPayload18H.deserialize(buffer)
-                payload = result.instance;
+            case SoyalCommandCode.GET_DEVICE_STATUS_18H: {
+                const result = GetDeviceStatusCommand18H.deserialize(buffer)
+                instance = result.instance;
                 bufferConsumed = result.bufferConsumed;
                 break;
             }
-            case SoyalCommandCode.GET_OLDEST_DEVICE_EVENT_LOG: {
-                const result = GetOldestDeviceEventLogCommandPayload25H.deserialize(buffer);
-                payload = result.instance;
+            case SoyalCommandCode.GET_OLDEST_DEVICE_EVENT_LOG_25H: {
+                const result = GetOldestDeviceEventLogCommand25H.deserialize(buffer);
+                instance = result.instance;
                 bufferConsumed = result.bufferConsumed;
                 break;
             }
@@ -52,20 +50,19 @@ export class SoyalCommand implements ISoyalCommand {
                 throw new UnknownProtocol(`Unknown command ID: ${commandID.toString(16)}`);
         }
 
-        if(bufferConsumed !== buffer.length) {
-            throw new PacketFormatError("deserialization not consumed all data");
+        if (bufferConsumed !== buffer.length) {
+            throw new PacketFormatError("deserialization did not consume all data");
         }
 
         return {
-            instance: new SoyalCommand(commandID, payload),
+            instance: instance,
             bufferConsumed: bufferConsumed,
         };
     }
 
     public serialize(): Uint8Array {
-        return Uint8Array.from([this.commandCode, ...this.payload.serialize()]);
+        return new Uint8Array([this.commandCode]);
     }
-}
 
-export interface ISoyalCommandPayload extends Serializable {
+    public abstract handleResponse(data: Uint8Array): void;
 }

@@ -3,7 +3,7 @@ import {Serializable} from "./Serializable";
 import {SoyalPackets} from "./SoyalPackets";
 import {assertUnreachable, MAX_UINT8} from "./Commons";
 import {SoyalResponse} from "./response/SoyalResponse";
-import {SoyalEventLog} from "./event_log/SoyalEventLog";
+import {SoyalDeviceEvent} from "./event_log/SoyalDeviceEvent";
 import {SoyalCommand} from "./command/SoyalCommand";
 
 export const SOYAL_PROTOCOL_SHORT = new Uint8Array([0x7E]);
@@ -27,12 +27,12 @@ export class SoyalProtocol implements Serializable {
     public readonly head: Uint8Array;
     public readonly length: number; // len(packet) - 2;
     public readonly destinationID: number;
-    public readonly data: SoyalCommand | SoyalEventLog | SoyalResponse;
+    public readonly data: SoyalCommand | SoyalDeviceEvent | SoyalResponse;
     public readonly xor: number; // 0xff xor packet[2:-2]
     public readonly sum: number; // sum of packet[2:-1]
 
     public constructor(head: Uint8Array, length: number, destinationID: number,
-                       data: SoyalCommand | SoyalEventLog | SoyalResponse,
+                       data: SoyalCommand | SoyalDeviceEvent | SoyalResponse,
                        xor: number, sum: number) {
         if (head != SOYAL_PROTOCOL_SHORT && head != SOYAL_PROTOCOL_SECURITY_SHORT &&
             head != SOYAL_PROTOCOL_LARGE && head != SOYAL_PROTOCOL_SECURITY_LARGE) {
@@ -111,7 +111,7 @@ export class SoyalProtocol implements Serializable {
                 break;
 
             case SoyalApplicationType.EVENT:
-                data = SoyalEventLog.deserialize(buffer);
+                data = SoyalDeviceEvent.deserialize(buffer);
                 break;
 
             case SoyalApplicationType.DEVICE_RESPONSE:
