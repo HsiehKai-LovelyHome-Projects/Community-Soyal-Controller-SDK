@@ -7,7 +7,7 @@ import {
 } from "../../Commons";
 import {PacketFormatError} from "../../Errors";
 import {DeserializeResult} from "../../Serializable";
-import {IDeviceStatusEventPayload} from "../DeviceStatusEventResponse09H";
+import {IDeviceStatusEventPayload} from "../DeviceStatusResponse09H";
 
 export class DeviceStatusNewCardPresent02H implements IDeviceStatusEventPayload {
     // data fields
@@ -129,7 +129,7 @@ export class DeviceStatusNewCardPresent02H implements IDeviceStatusEventPayload 
             packet.push(this.identify, this.tagType!, this.flag!);
         }
 
-        if (this.data !== undefined) {
+        if (this.data) {
             packet.push(...this.data);
         }
 

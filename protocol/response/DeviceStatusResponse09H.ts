@@ -1,12 +1,9 @@
 import {DeserializeResult, Serializable} from "../Serializable";
 import {PacketFormatError, UnknownProtocol} from "../Errors";
 import {ISoyalResponsePayload} from "./SoyalResponse";
-import {SoyalDeviceEvent} from "../event_log/SoyalDeviceEvent";
 import {DeviceStatusIOStatus00H} from "./device_status_event/DeviceStatusIOStatus00H";
 import {DeviceIOEventKeyPadPressed01H} from "./device_status_event/DeviceStatusKeyPadPressed01H";
 import {DeviceStatusNewCardPresent02H} from "./device_status_event/DeviceStatusNewCardPresent02H";
-
-type DeviceEventPayload_t = DeviceStatusIOStatus00H | DeviceIOEventKeyPadPressed01H | DeviceStatusNewCardPresent02H;
 
 // noinspection JSUnusedGlobalSymbols
 export enum DeviceStatusEventType {
@@ -21,17 +18,15 @@ export enum DeviceStatusEventType {
     NEW_CARD = 0x2, // Card Present Status of the Device
 }
 
-export class DeviceStatusEventResponse09H implements ISoyalResponsePayload {
+export class DeviceStatusResponse09H implements ISoyalResponsePayload {
 
-    public readonly event: DeviceEventPayload_t;
-    public readonly deviceLog ?: SoyalDeviceEvent;
+    public readonly deviceStatus: IDeviceStatusEventPayload;
 
-    public constructor(event: DeviceEventPayload_t, deviceEventLog ?: SoyalDeviceEvent) {
-        this.event = event;
-        this.deviceLog = deviceEventLog;
+    public constructor(deviceStatus: IDeviceStatusEventPayload) {
+        this.deviceStatus = deviceStatus;
     }
 
-    public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceStatusEventResponse09H> {
+    public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceStatusResponse09H> {
         if (buffer.length < 1) {
             throw new PacketFormatError("not enough data for deserialization");
         }
@@ -39,8 +34,8 @@ export class DeviceStatusEventResponse09H implements ISoyalResponsePayload {
         const eventType = buffer[0];
 
         let data = buffer.subarray(1);
-        let event: DeviceEventPayload_t;
-        let eventDataLength: number;
+        let event: IDeviceStatusEventPayload;
+        let bufferConsumed: number;
 
         switch (eventType) {
             case DeviceStatusEventType.AR721H:
@@ -50,47 +45,33 @@ export class DeviceStatusEventResponse09H implements ISoyalResponsePayload {
             case DeviceStatusEventType.AR721Q: {
                 const result = DeviceStatusIOStatus00H.deserialize(data);
                 event = result.instance;
-                eventDataLength = result.bufferConsumed;
+                bufferConsumed = result.bufferConsumed;
                 break;
             }
             case DeviceStatusEventType.PIN_PAD: {
                 const result = DeviceIOEventKeyPadPressed01H.deserialize(data);
                 event = result.instance;
-                eventDataLength = result.bufferConsumed;
+                bufferConsumed = result.bufferConsumed;
                 break;
             }
             case DeviceStatusEventType.NEW_CARD: {
                 const result = DeviceStatusNewCardPresent02H.deserialize(data);
                 event = result.instance;
-                eventDataLength = result.bufferConsumed;
+                bufferConsumed = result.bufferConsumed;
                 break;
             }
             default:
                 throw new UnknownProtocol(`Unknown event type: ${eventType}`);
         }
 
-        data = buffer.slice(eventDataLength);
-
-        let eventLog: SoyalDeviceEvent | undefined;
-        if (data.length > 0) {
-            const result = SoyalDeviceEvent.deserialize(data);
-
-            eventLog = result.instance;
-            data = data.slice(result.bufferConsumed);
-        }
-
         return {
-            instance: new DeviceStatusEventResponse09H(event, eventLog),
+            instance: new DeviceStatusResponse09H(event),
             bufferConsumed: buffer.length - data.length,
         };
     }
 
     public serialize(): Uint8Array {
-        if (this.deviceLog) {
-            return Uint8Array.from([...this.event.serialize(), ...this.deviceLog.serialize()]);
-        }
-
-        return this.event.serialize();
+        return this.deviceStatus.serialize();
     }
 }
 

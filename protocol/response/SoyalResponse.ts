@@ -1,5 +1,5 @@
 import {DeserializeResult, Serializable} from "../Serializable";
-import {DeviceStatusEventResponse09H} from "./DeviceStatusEventResponse09H";
+import {DeviceStatusResponse09H} from "./DeviceStatusResponse09H";
 import {PacketFormatError, UnknownProtocol} from "../Errors";
 import {MAX_UINT8} from "../Commons";
 
@@ -40,7 +40,7 @@ export class SoyalResponse implements ISoyalResponse {
 
         switch (functionCode) {
             case SoyalFunctionCode.DEVICE_STATUS_EVENT: {
-                const result = DeviceStatusEventResponse09H.deserialize(buffer);
+                const result = DeviceStatusResponse09H.deserialize(buffer);
                 payload = result.instance;
                 bufferConsumed = result.bufferConsumed;
                 break;

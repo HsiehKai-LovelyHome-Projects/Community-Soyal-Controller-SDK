@@ -1,5 +1,17 @@
 import {expect, test} from "@jest/globals";
-import {getBytesFromUInt16BE, getBytesFromUInt32BE, getBytesFromUInt40BE, visualizeByte} from "./Commons";
+import {
+    composeUInt16MSBLSB,
+    getBytesFromUInt16BE,
+    getBytesFromUInt32BE,
+    getBytesFromUInt40BE,
+    visualizeByte
+} from "./Commons";
+
+
+test("composeUInt16MSBLSB", () => {
+    const value = composeUInt16MSBLSB(0x12, 0x34);
+    expect(value).toBe(0x1234);
+});
 
 test("getBytesFromUInt16BE", () => {
     const bytes = getBytesFromUInt16BE(0x1234);

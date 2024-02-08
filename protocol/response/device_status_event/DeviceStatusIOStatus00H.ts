@@ -3,7 +3,10 @@
 import {MAX_UINT8} from "../../Commons";
 import {PacketFormatError} from "../../Errors";
 import {DeserializeResult} from "../../Serializable";
-import {IDeviceStatusEventPayload} from "../DeviceStatusEventResponse09H";
+import {IDeviceStatusEventPayload} from "../DeviceStatusResponse09H";
+import {DeviceIOEventKeyPadPressed01H} from "./DeviceStatusKeyPadPressed01H";
+import {DeviceStatusNewCardPresent02H} from "./DeviceStatusNewCardPresent02H";
+
 
 export class DeviceStatusIOStatus00H implements IDeviceStatusEventPayload {
     // data fields
@@ -11,6 +14,7 @@ export class DeviceStatusIOStatus00H implements IDeviceStatusEventPayload {
     public readonly data1: number;
     public readonly data2: number;
     public readonly data3: number;
+
 
     public constructor(data0: number, data1: number, data2: number, data3: number) {
         if (data0 > MAX_UINT8) {
@@ -37,6 +41,14 @@ export class DeviceStatusIOStatus00H implements IDeviceStatusEventPayload {
             throw new PacketFormatError("not enough data for deserialization");
         }
 
+        /*let eventLog: SoyalDeviceEvent | undefined;
+if (data.length > 0) {
+const result = SoyalDeviceEvent.deserialize(data);
+
+eventLog = result.instance;
+data = data.slice(result.bufferConsumed);
+}*/
+
         return {
             instance: new DeviceStatusIOStatus00H(buffer[0], buffer[1], buffer[2], buffer[3]),
             bufferConsumed: 4,
@@ -44,6 +56,7 @@ export class DeviceStatusIOStatus00H implements IDeviceStatusEventPayload {
     }
 
     public serialize(): Uint8Array {
+
         return Uint8Array.from([this.data0, this.data1, this.data2, this.data3]);
     }
 }
