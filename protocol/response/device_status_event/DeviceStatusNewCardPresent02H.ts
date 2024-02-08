@@ -1,7 +1,6 @@
 import {
     composeUInt16MSBLSB,
-    getBytesFromUInt16BE,
-    getBytesFromUInt64BE,
+    getBytesFromUInt16BE, getBytesFromUInt40BE,
     MAX_CARD_UID,
     MAX_UINT16,
     MAX_UINT8
@@ -10,7 +9,7 @@ import {PacketFormatError} from "../../Errors";
 import {DeserializeResult} from "../../Serializable";
 import {IDeviceStatusEventPayload} from "../DeviceStatusEventResponse09H";
 
-export class DeviceStatusEventPayload02H implements IDeviceStatusEventPayload {
+export class DeviceStatusNewCardPresent02H implements IDeviceStatusEventPayload {
     // data fields
     public readonly dutyCode: number;
     public readonly cardUID: number;
@@ -30,10 +29,34 @@ export class DeviceStatusEventPayload02H implements IDeviceStatusEventPayload {
     public constructor(dutyCode: number, cardUID: number, value: number,
                        idCode: number, deviceParameters: number, userStatus: number,
                        identify ?: number, tagType?: number, flag?: number, data?: Uint8Array) {
-        if (dutyCode > MAX_UINT8 || cardUID > MAX_CARD_UID || value > MAX_UINT16 ||
-            idCode > MAX_UINT8 || deviceParameters > MAX_UINT8 || userStatus > MAX_UINT8 ||
-            (identify && identify > MAX_UINT8) || (tagType && tagType > MAX_UINT8) || (flag && flag > MAX_UINT8) ||
-            (data && data.length !== 4)) {
+        if (dutyCode > MAX_UINT8) {
+            throw new PacketFormatError("data is out of range");
+        }
+        if (cardUID > MAX_CARD_UID) {
+            throw new PacketFormatError("data is out of range");
+        }
+        if (value > MAX_UINT16) {
+            throw new PacketFormatError("data is out of range");
+        }
+        if (idCode > MAX_UINT8) {
+            throw new PacketFormatError("data is out of range");
+        }
+        if (deviceParameters > MAX_UINT8) {
+            throw new PacketFormatError("data is out of range");
+        }
+        if (userStatus > MAX_UINT8) {
+            throw new PacketFormatError("data is out of range");
+        }
+        if (identify && identify > MAX_UINT8) {
+            throw new PacketFormatError("data is out of range");
+        }
+        if (tagType && tagType > MAX_UINT8) {
+            throw new PacketFormatError("data is out of range");
+        }
+        if (flag && flag > MAX_UINT8) {
+            throw new PacketFormatError("data is out of range");
+        }
+        if (data && data.length !== 4) {
             throw new PacketFormatError("data is out of range");
         }
 
@@ -50,7 +73,7 @@ export class DeviceStatusEventPayload02H implements IDeviceStatusEventPayload {
         this.data = data;
     }
 
-    public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceStatusEventPayload02H> {
+    public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceStatusNewCardPresent02H> {
         if (buffer.length < 10) {
             throw new PacketFormatError("not enough data for deserialization");
         }
@@ -88,7 +111,7 @@ export class DeviceStatusEventPayload02H implements IDeviceStatusEventPayload {
         }
 
         return {
-            instance: new DeviceStatusEventPayload02H(buffer[0], cardUID, value, buffer[7], buffer[8], buffer[9],
+            instance: new DeviceStatusNewCardPresent02H(buffer[0], cardUID, value, buffer[7], buffer[8], buffer[9],
                 identify, tagType, flag, data),
             bufferConsumed: bufferConsumed,
         };
@@ -96,17 +119,17 @@ export class DeviceStatusEventPayload02H implements IDeviceStatusEventPayload {
     }
 
     serialize(): Uint8Array {
-        const cardUIDBytes = getBytesFromUInt64BE(this.cardUID);
+        const cardUIDBytes = getBytesFromUInt40BE(this.cardUID);
         const valueBytes = getBytesFromUInt16BE(this.value);
 
         let packet = [this.dutyCode, cardUIDBytes[3], cardUIDBytes[2], valueBytes[1], valueBytes[0],
             cardUIDBytes[1], cardUIDBytes[0], cardUIDBytes[4], this.deviceParameters, this.userStatus];
 
-        if (this.identify) {
+        if (this.identify !== undefined) {
             packet.push(this.identify, this.tagType!, this.flag!);
         }
 
-        if (this.data) {
+        if (this.data !== undefined) {
             packet.push(...this.data);
         }
 

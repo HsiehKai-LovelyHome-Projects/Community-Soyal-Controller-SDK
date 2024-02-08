@@ -1,7 +1,10 @@
 export const MAX_UINT8 = 0xff;
 export const MAX_UINT16 = 0xffff;
 
+export const MAX_UINT32 = 0xffffffff; // 32 bits
+
 export const MAX_CARD_UID = 0xFFFFFFFFFF; // 40 bits
+
 
 export function assertUnreachable(x: never): never {
     throw new Error("Didn't expect to get here");
@@ -11,43 +14,44 @@ export function composeUInt16MSBLSB(msb: number, lsb: number): number {
     return (msb << 8) + lsb;
 }
 
-/**
- * 0x1234 -> [0x12 0x34]
- */
-export function getBytesFromUInt16BE(value: number): Array<number> {
-    const result = new Array<number>(2);
+
+function getBytesFromUIntLE(value: number, valueLength: number): Array<number> {
+    if (valueLength > 4) {
+        // bitwise operation is supported under 32-bit integer specified by javascript's standard.
+        throw new RangeError("given value is too big (max. 32 bits, 4 bytes are supported)");
+    }
+
+    const result = new Array<number>(valueLength);
     for (let count = 0; count < result.length; count++) {
         result[count] = value & MAX_UINT8;
         value >>= 8;
     }
 
     return result;
+}
+
+/**
+ * 0x1234 -> [0x12 0x34]
+ */
+export function getBytesFromUInt16BE(value: number): Array<number> {
+    return getBytesFromUIntLE(value, 2).reverse();
 }
 
 /**
  * 0x12345678 -> [0x12 0x34 0x56 0x78]
  */
 export function getBytesFromUInt32BE(value: number): Array<number> {
-    const result = new Array<number>(4);
-    for (let count = 0; count < result.length; count++) {
-        result[count] = value & MAX_UINT8;
-        value >>= 8;
-    }
-
-    return result;
+    return getBytesFromUIntLE(value, 4).reverse();
 }
 
 /**
- * 0x1234567812345678 -> [0x12 0x34 0x56 0x78 0x12 0x34 0x56 0x78]
+ * 0x0123456789 -> [0x01 0x23 0x45 0x67 0x89]
  */
-export function getBytesFromUInt64BE(value: number): Array<number> {
-    const result = new Array<number>(8);
-    for (let count = 0; count < result.length; count++) {
-        result[count] = value & MAX_UINT8;
-        value >>= 8;
-    }
+export function getBytesFromUInt40BE(value: number): Array<number> {
+    const result = getBytesFromUIntLE(value & MAX_UINT32, 4);
+    result.push(Math.floor(value / 2 ** 32));
 
-    return result;
+    return result.reverse();
 }
 
 export function timestampFromSoyalFormat(buffer: Uint8Array): Date {
@@ -83,4 +87,12 @@ export function timestamp2SoyalFormat(timestamp: Date): Array<number> {
     payload[6] = timestamp.getFullYear() % 100;
 
     return payload;
+}
+
+export function visualizeByte(number: number): string {
+    if (number > MAX_UINT8) {
+        throw new RangeError("given number is too big (support uint8)");
+    }
+
+    return number.toString(16).toUpperCase() + "H";
 }

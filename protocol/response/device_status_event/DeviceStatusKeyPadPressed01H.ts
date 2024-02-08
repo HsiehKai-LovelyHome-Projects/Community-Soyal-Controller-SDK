@@ -3,7 +3,7 @@ import {PacketFormatError} from "../../Errors";
 import {DeserializeResult} from "../../Serializable";
 import {IDeviceStatusEventPayload} from "../DeviceStatusEventResponse09H";
 
-export class DeviceStatusEventPayload01H implements IDeviceStatusEventPayload {
+export class DeviceIOEventKeyPadPressed01H implements IDeviceStatusEventPayload {
     public readonly fifthPinData: number;
     public readonly fourPinData: number;
     public readonly reserved0: number = 0;
@@ -16,12 +16,28 @@ export class DeviceStatusEventPayload01H implements IDeviceStatusEventPayload {
 
     public constructor(fifthPinData: number, fourPinData: number, data4: number, data5: number,
                        data7_11: Uint8Array, data12: Uint8Array) {
-        if (fifthPinData > 0x80 /* # */ || fourPinData > 9999 || data4 > MAX_UINT8 || data5 > MAX_UINT8) {
+        if (fifthPinData > 0x80 /* # */) {
             throw new PacketFormatError("data is out of range");
         }
 
-        if (this.data7_11.length !== 11 - 7 + 1 || !this.data12 || this.data12.length !== 1) {
-            throw new PacketFormatError("data7_11 and data12 must be 5 bytes and 1 byte respectively");
+        if (fourPinData > 9999) {
+            throw new PacketFormatError("data is out of range");
+        }
+
+        if (data4 > MAX_UINT8) {
+            throw new PacketFormatError("data is out of range");
+        }
+
+        if (data5 > MAX_UINT8) {
+            throw new PacketFormatError("data is out of range");
+        }
+
+        if (data7_11.length !== 11 - 7 + 1 ) {
+            throw new PacketFormatError("data7_11 must be 5 bytes");
+        }
+
+        if(data12.length !== 1) {
+            throw new PacketFormatError("data12 must be 1 byte");
         }
 
         this.fifthPinData = fifthPinData;
@@ -32,7 +48,7 @@ export class DeviceStatusEventPayload01H implements IDeviceStatusEventPayload {
         this.data12 = data12;
     }
 
-    public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceStatusEventPayload01H> {
+    public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceIOEventKeyPadPressed01H> {
         if (buffer.length < 13) {
             throw new PacketFormatError("not enough data for deserialization");
         }
@@ -41,7 +57,7 @@ export class DeviceStatusEventPayload01H implements IDeviceStatusEventPayload {
         const data12 = buffer.slice(12, 12 + 1);
 
         return {
-            instance: new DeviceStatusEventPayload01H(buffer[0], composeUInt16MSBLSB(buffer[1], buffer[2]), buffer[4],
+            instance: new DeviceIOEventKeyPadPressed01H(buffer[0], composeUInt16MSBLSB(buffer[1], buffer[2]), buffer[4],
                 buffer[5], data7_11, data12),
             bufferConsumed: 13,
         };

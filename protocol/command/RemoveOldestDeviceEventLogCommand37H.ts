@@ -1,14 +1,14 @@
 import {DeserializeResult} from "../Serializable";
 import {ISoyalCommandPayload} from "./SoyalCommand";
 
-export class GetOldestDeviceEventLogCommand25H implements ISoyalCommandPayload {
+export class RemoveOldestDeviceEventLogCommand37H implements ISoyalCommandPayload {
 
     public constructor() {
     }
 
-    public static deserialize(_: Uint8Array): DeserializeResult<GetOldestDeviceEventLogCommand25H> {
+    public static deserialize(_: Uint8Array): DeserializeResult<RemoveOldestDeviceEventLogCommand37H> {
         return {
-            instance: new GetOldestDeviceEventLogCommand25H(),
+            instance: new RemoveOldestDeviceEventLogCommand37H(),
             bufferConsumed: 0,
         }
     }

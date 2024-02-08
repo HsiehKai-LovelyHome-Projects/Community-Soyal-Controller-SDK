@@ -2,11 +2,11 @@ import {DeserializeResult, Serializable} from "../Serializable";
 import {PacketFormatError, UnknownProtocol} from "../Errors";
 import {ISoyalResponsePayload} from "./SoyalResponse";
 import {SoyalDeviceEvent} from "../event_log/SoyalDeviceEvent";
-import {DeviceStatusEventPayload00H} from "./device_status_event/DeviceStatusEventPayload00H";
-import {DeviceStatusEventPayload01H} from "./device_status_event/DeviceStatusEventPayload01H";
-import {DeviceStatusEventPayload02H} from "./device_status_event/DeviceStatusEventPayload02H";
+import {DeviceStatusIOStatus00H} from "./device_status_event/DeviceStatusIOStatus00H";
+import {DeviceIOEventKeyPadPressed01H} from "./device_status_event/DeviceStatusKeyPadPressed01H";
+import {DeviceStatusNewCardPresent02H} from "./device_status_event/DeviceStatusNewCardPresent02H";
 
-type DeviceEventPayload_t = DeviceStatusEventPayload00H | DeviceStatusEventPayload01H | DeviceStatusEventPayload02H;
+type DeviceEventPayload_t = DeviceStatusIOStatus00H | DeviceIOEventKeyPadPressed01H | DeviceStatusNewCardPresent02H;
 
 // noinspection JSUnusedGlobalSymbols
 export enum DeviceStatusEventType {
@@ -43,20 +43,24 @@ export class DeviceStatusEventResponse09H implements ISoyalResponsePayload {
         let eventDataLength: number;
 
         switch (eventType) {
-            case DeviceStatusEventType.AR721H: {
-                const result = DeviceStatusEventPayload00H.deserialize(data);
+            case DeviceStatusEventType.AR721H:
+            case DeviceStatusEventType.AR727H:
+            case DeviceStatusEventType.AR721W:
+            case DeviceStatusEventType.AR721D:
+            case DeviceStatusEventType.AR721Q: {
+                const result = DeviceStatusIOStatus00H.deserialize(data);
                 event = result.instance;
                 eventDataLength = result.bufferConsumed;
                 break;
             }
             case DeviceStatusEventType.PIN_PAD: {
-                const result = DeviceStatusEventPayload01H.deserialize(data);
+                const result = DeviceIOEventKeyPadPressed01H.deserialize(data);
                 event = result.instance;
                 eventDataLength = result.bufferConsumed;
                 break;
             }
             case DeviceStatusEventType.NEW_CARD: {
-                const result = DeviceStatusEventPayload02H.deserialize(data);
+                const result = DeviceStatusNewCardPresent02H.deserialize(data);
                 event = result.instance;
                 eventDataLength = result.bufferConsumed;
                 break;

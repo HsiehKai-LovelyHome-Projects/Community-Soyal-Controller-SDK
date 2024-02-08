@@ -1,57 +1,56 @@
 import {PacketCheckSumError, PacketFormatError, UnknownProtocol} from "./Errors";
 import {Serializable} from "./Serializable";
 import {SoyalPackets} from "./SoyalPackets";
-import {assertUnreachable, MAX_UINT8} from "./Commons";
-import {SoyalResponse} from "./response/SoyalResponse";
-import {SoyalDeviceEvent} from "./event_log/SoyalDeviceEvent";
-import {SoyalCommand} from "./command/SoyalCommand";
-
-export const SOYAL_PROTOCOL_SHORT = new Uint8Array([0x7E]);
-export const SOYAL_PROTOCOL_SECURITY_SHORT = new Uint8Array([0x7F]);
-export const SOYAL_PROTOCOL_LARGE = new Uint8Array([0xFF, 0x00, 0x5A, 0xA5]);
-export const SOYAL_PROTOCOL_SECURITY_LARGE = new Uint8Array([0xFF, 0x00, 0x55, 0xAA]);
+import {MAX_UINT8} from "./Commons";
 
 
-const LENGTH_FIELD_LENGTH = 1;
-const DESTINATION_ID_FIELD_LENGTH = 1;
-const XOR_FIELD_LENGTH = 1;
-const SUM_FIELD_LENGTH = 1;
-
-export enum SoyalApplicationType {
-    HOST_COMMAND,
-    EVENT,
-    DEVICE_RESPONSE,
+export class SoyalHeader extends Uint8Array {
+    public constructor(header: Iterable<number>) {
+        super(header);
+    }
 }
 
+export const SOYAL_PROTOCOL_SHORT = new Uint8Array([0x7E]);
+export const SOYAL_PROTOCOL_SECURITY_SHORT = new SoyalHeader([0x7F]);
+export const SOYAL_PROTOCOL_LARGE = new SoyalHeader([0xFF, 0x00, 0x5A, 0xA5]);
+export const SOYAL_PROTOCOL_SECURITY_LARGE = new SoyalHeader([0xFF, 0x00, 0x55, 0xAA]);
+
+
+export const LENGTH_FIELD_LENGTH = 1;
+export const DESTINATION_ID_FIELD_LENGTH = 1;
+export const XOR_FIELD_LENGTH = 1;
+export const SUM_FIELD_LENGTH = 1;
+
 export class SoyalProtocol implements Serializable {
-    public readonly head: Uint8Array;
+    public readonly head: SoyalHeader;
     public readonly length: number; // len(packet) - 2;
     public readonly destinationID: number;
-    public readonly data: SoyalCommand | SoyalDeviceEvent | SoyalResponse;
+    public readonly payload: Uint8Array;
     public readonly xor: number; // 0xff xor packet[2:-2]
     public readonly sum: number; // sum of packet[2:-1]
 
-    public constructor(head: Uint8Array, length: number, destinationID: number,
-                       data: SoyalCommand | SoyalDeviceEvent | SoyalResponse,
-                       xor: number, sum: number) {
+    public constructor(head: SoyalHeader, destinationID: number,
+                       payload: Uint8Array) {
         if (head != SOYAL_PROTOCOL_SHORT && head != SOYAL_PROTOCOL_SECURITY_SHORT &&
             head != SOYAL_PROTOCOL_LARGE && head != SOYAL_PROTOCOL_SECURITY_LARGE) {
             throw new UnknownProtocol("unknown protocol");
         }
 
-        if (length > MAX_UINT8 || destinationID > MAX_UINT8 || xor > MAX_UINT8 || sum > MAX_UINT8) {
+        if (destinationID > MAX_UINT8) {
             throw new PacketFormatError("data is out of range");
         }
 
         this.head = head;
-        this.length = length;
+        this.length = DESTINATION_ID_FIELD_LENGTH + payload.length + XOR_FIELD_LENGTH + SUM_FIELD_LENGTH;
         this.destinationID = destinationID;
-        this.data = data;
-        this.xor = xor
-        this.sum = sum;
+        this.payload = payload;
+
+        const checkSums = SoyalPackets.getPacketCheckSums(destinationID, this.payload);
+        this.xor = checkSums.xor;
+        this.sum = checkSums.sum;
     }
 
-    public static deserialize(buffer: Uint8Array, type: SoyalApplicationType): SoyalProtocol {
+    public static deserialize(buffer: Uint8Array): SoyalProtocol {
         const minPayloadSize = LENGTH_FIELD_LENGTH + XOR_FIELD_LENGTH + SUM_FIELD_LENGTH;
         if (buffer.length < SOYAL_PROTOCOL_SHORT.length + minPayloadSize) {
             throw new PacketFormatError("not a valid Soyal packet");
@@ -104,25 +103,7 @@ export class SoyalProtocol implements Serializable {
             throw new PacketCheckSumError("xor or sum checksum error");
         }
 
-        let data;
-        switch (type) {
-            case SoyalApplicationType.HOST_COMMAND:
-                data = SoyalCommand.deserialize(buffer);
-                break;
-
-            case SoyalApplicationType.EVENT:
-                data = SoyalDeviceEvent.deserialize(buffer);
-                break;
-
-            case SoyalApplicationType.DEVICE_RESPONSE:
-                data = SoyalResponse.deserialize(buffer);
-                break;
-
-            default:
-                assertUnreachable(type);
-        }
-
-        return new SoyalProtocol(head, length, destinationID, data.instance, xorExpected, sumExpected);
+        return new SoyalProtocol(head, destinationID, buffer);
     }
 
     public serialize(): Uint8Array {
@@ -138,11 +119,10 @@ export class SoyalProtocol implements Serializable {
         packet[offset] = this.destinationID;
         offset += DESTINATION_ID_FIELD_LENGTH;
 
-        const rawData = this.data.serialize();
-        packet.set(rawData, offset);
+        packet.set(this.payload, offset);
 
-        packet[-2] = this.xor;
-        packet[-1] = this.sum;
+        packet[packet.length - 2] = this.xor;
+        packet[packet.length - 1] = this.sum;
 
         return packet;
     }
