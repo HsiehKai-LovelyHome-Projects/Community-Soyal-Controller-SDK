@@ -2,8 +2,14 @@ import {DeserializeResult, Serializable} from "../Serializable";
 import {DeviceStatusResponse09H} from "./DeviceStatusResponse09H";
 import {PacketFormatError, UnknownProtocol} from "../Errors";
 import {MAX_UINT8} from "../Commons";
+import {DeviceEchoResponse05H} from "./DeviceEchoResponse05H";
+import {DeviceEchoResponse04H} from "./DeviceEchoResponse04H";
+import {DoorStatusResponse03H} from "./DoorStatusResponse03H";
 
 export enum SoyalFunctionCode {
+    DOOR_STATUS_RESPONSE = 0x03,
+    DEVICE_ECHO_RESPONSE_ACK = 0x04,
+    DEVICE_ECHO_RESPONSE_NACK = 0x05,
     DEVICE_STATUS_EVENT = 0x09,
 }
 
@@ -39,8 +45,26 @@ export class SoyalResponse implements ISoyalResponse {
         let bufferConsumed: number;
 
         switch (functionCode) {
+            case SoyalFunctionCode.DOOR_STATUS_RESPONSE: {
+                const result = DoorStatusResponse03H.deserialize(buffer);
+                payload = result.instance;
+                bufferConsumed = result.bufferConsumed;
+                break;
+            }
             case SoyalFunctionCode.DEVICE_STATUS_EVENT: {
                 const result = DeviceStatusResponse09H.deserialize(buffer);
+                payload = result.instance;
+                bufferConsumed = result.bufferConsumed;
+                break;
+            }
+            case SoyalFunctionCode.DEVICE_ECHO_RESPONSE_ACK: {
+                const result = DeviceEchoResponse04H.deserialize(buffer);
+                payload = result.instance;
+                bufferConsumed = result.bufferConsumed;
+                break;
+            }
+            case SoyalFunctionCode.DEVICE_ECHO_RESPONSE_NACK: {
+                const result = DeviceEchoResponse05H.deserialize(buffer);
                 payload = result.instance;
                 bufferConsumed = result.bufferConsumed;
                 break;
@@ -50,7 +74,7 @@ export class SoyalResponse implements ISoyalResponse {
         }
 
         if (bufferConsumed !== buffer.length) {
-            throw new PacketFormatError("deserialization not consumed all data");
+            throw new PacketFormatError(`deserialization not consumed all data: ${bufferConsumed} / ${buffer.length}`);
         }
 
         return {

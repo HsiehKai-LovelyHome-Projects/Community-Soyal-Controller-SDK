@@ -5,6 +5,8 @@ import {GetDeviceStatusCommand18H} from "./GetDeviceStatusCommand18H";
 import {GetOldestDeviceEventLogCommand25H} from "./GetOldestDeviceEventLogCommand25H";
 import {PromptAcceptedMessage04H} from "./PromptAcceptedMessage04H";
 import {RemoveOldestDeviceEventLogCommand37H} from "./RemoveOldestDeviceEventLogCommand37H";
+import {RemoveAllDeviceEventLogCommand2DH} from "./RemoveAllDeviceEventLogCommand2DH";
+import {ControlRelayCommand21H} from "./ControlRelayCommand21H";
 
 export class SoyalCommandDeserializer {
     public static deserialize(buffer: Uint8Array): DeserializeResult<SoyalCommand> {
@@ -40,24 +42,33 @@ export class SoyalCommandDeserializer {
                 bufferConsumed += result.bufferConsumed;
                 break;
             }
+            case SoyalCommandCode.CONTROL_RELAY_21H: {
+                const result = ControlRelayCommand21H.deserialize(buffer);
+                payload = result.instance;
+                bufferConsumed += result.bufferConsumed;
+                break;
+            }
             case SoyalCommandCode.GET_OLDEST_DEVICE_EVENT_LOG_25H: {
                 const result = GetOldestDeviceEventLogCommand25H.deserialize(buffer);
                 payload = result.instance;
                 bufferConsumed += result.bufferConsumed;
                 break;
             }
-            case SoyalCommandCode.REMOVE_OLDEST_DEVICE_EVENT_LOG_37H: {
-                const result = RemoveOldestDeviceEventLogCommand37H.deserialize(buffer);
+            case SoyalCommandCode.REMOVE_ALL_DEVICE_EVENT_LOG_2DH: {
+                const result = RemoveAllDeviceEventLogCommand2DH.deserialize(buffer);
                 payload = result.instance;
                 bufferConsumed += result.bufferConsumed;
                 break;
+            }
+            case SoyalCommandCode.REMOVE_OLDEST_DEVICE_EVENT_LOG_37H: {
+
             }
             default:
                 throw new UnknownProtocol(`Unknown command ID: ${commandID.toString(16)}`);
         }
 
         if (bufferConsumed !== bufferLength) {
-            throw new PacketFormatError("deserialization did not consume all data");
+            throw new PacketFormatError(`deserialization not consumed all data: ${bufferConsumed} / ${bufferLength}`);
         }
 
         return {

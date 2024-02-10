@@ -5,6 +5,7 @@ import {PacketFormatError} from "../Errors";
 import {DeserializeResult} from "../Serializable";
 import {IDeviceEventLogPayload} from "./SoyalDeviceEvent";
 
+// TODO move this to response
 export class DeviceEventNoEvent04H implements IDeviceEventLogPayload {
     // data fields
     // appended after 2009.FEB.09

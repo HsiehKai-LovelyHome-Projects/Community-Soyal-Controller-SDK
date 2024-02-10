@@ -1,9 +1,6 @@
 import {PacketFormatError} from "../Errors";
 import {DeserializeResult} from "../Serializable";
-import {ISoyalCommandPayload, SoyalCommand, SoyalCommandCode} from "./SoyalCommand";
-import assert from "assert";
-
-require('dotenv').config();
+import {ISoyalCommandPayload} from "./SoyalCommand";
 
 export class GetDeviceStatusCommand18H implements ISoyalCommandPayload {
     public readonly timestamp?: Date;

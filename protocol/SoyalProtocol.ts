@@ -15,13 +15,14 @@ export const SOYAL_PROTOCOL_SECURITY_SHORT = new SoyalHeader([0x7F]);
 export const SOYAL_PROTOCOL_LARGE = new SoyalHeader([0xFF, 0x00, 0x5A, 0xA5]);
 export const SOYAL_PROTOCOL_SECURITY_LARGE = new SoyalHeader([0xFF, 0x00, 0x55, 0xAA]);
 
-
 export const LENGTH_FIELD_LENGTH = 1;
 export const DESTINATION_ID_FIELD_LENGTH = 1;
 export const XOR_FIELD_LENGTH = 1;
 export const SUM_FIELD_LENGTH = 1;
 
 export class SoyalProtocol implements Serializable {
+    public static readonly SOURCE_HOST = 0;
+
     public readonly head: SoyalHeader;
     public readonly length: number; // len(packet) - 2;
     public readonly destinationID: number;

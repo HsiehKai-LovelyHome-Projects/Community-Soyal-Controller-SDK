@@ -9,8 +9,11 @@ export enum SoyalCommandCode {
 
     GET_DEVICE_STATUS_18H = 0x18, // event polling
 
+    CONTROL_RELAY_21H = 0x21,
     GET_OLDEST_DEVICE_EVENT_LOG_25H = 0x25,
+
     REMOVE_OLDEST_DEVICE_EVENT_LOG_37H = 0x37,
+    REMOVE_ALL_DEVICE_EVENT_LOG_2DH = 0x2d,
 }
 
 export class SoyalCommand implements ISoyalCommand {

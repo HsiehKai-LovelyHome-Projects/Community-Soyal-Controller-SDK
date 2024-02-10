@@ -27,3 +27,17 @@ export class UnknownProtocol extends Error {
         this.name = 'UnknownProtocol';
     }
 }
+
+export class UnsuccessfulOperation extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'UnsuccessfulOperation';
+    }
+}
+
+export class InvalidProtocol extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'InvalidProtocol';
+    }
+}

@@ -1,7 +1,7 @@
 import {DeserializeResult, Serializable} from "../Serializable";
 import {DeviceEventInvalidCard03H} from "./DeviceEventInvalidCard03H";
 import {DeviceEventNormalAccess0BH} from "./DeviceEventNormalAccess0BH";
-import {MAX_UINT8} from "../Commons";
+import {assertUnreachable, MAX_UINT8} from "../Commons";
 import {PacketFormatError, PacketValueError} from "../Errors";
 
 export type DeviceEventLog_t = DeviceEventInvalidCard03H | DeviceEventNormalAccess0BH;
@@ -46,31 +46,32 @@ export class SoyalDeviceEvent implements IDeviceEvent {
         const eventType = buffer[0];
         const readerID = buffer[1];
 
-        const logPayloadBuffer = buffer.subarray(2);
+        buffer = buffer.subarray(2, buffer.length);
         let payload: DeviceEventLog_t;
         let bufferConsumed: number;
 
         switch (eventType) {
             case LogEntryEventType.INVALID_CARD: {
-                const result = DeviceEventInvalidCard03H.deserialize(logPayloadBuffer);
+                const result = DeviceEventInvalidCard03H.deserialize(buffer);
 
                 payload = result.instance;
                 bufferConsumed = result.bufferConsumed;
                 break;
             }
             case LogEntryEventType.NORMAL_ACCESS: {
-                const result = DeviceEventNormalAccess0BH.deserialize(logPayloadBuffer);
+                const result = DeviceEventNormalAccess0BH.deserialize(buffer);
 
                 payload = result.instance;
                 bufferConsumed = result.bufferConsumed;
                 break;
             }
+
             default:
                 throw new PacketValueError(`unknown event log type ${eventType}`);
         }
 
         if (bufferConsumed !== buffer.length) {
-            throw new PacketFormatError("deserialization not consumed all data");
+            throw new PacketFormatError(`deserialization not consumed all data: ${bufferConsumed} / ${buffer.length}`);
         }
 
         return {
