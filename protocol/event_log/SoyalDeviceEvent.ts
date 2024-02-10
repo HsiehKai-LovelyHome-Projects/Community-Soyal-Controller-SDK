@@ -1,12 +1,13 @@
 import {DeserializeResult, Serializable} from "../Serializable";
 import {DeviceEventInvalidCard03H} from "./DeviceEventInvalidCard03H";
 import {DeviceEventNormalAccess0BH} from "./DeviceEventNormalAccess0BH";
-import {assertUnreachable, MAX_UINT8} from "../Commons";
+import {MAX_UINT8} from "../Commons";
 import {PacketFormatError, PacketValueError} from "../Errors";
-
-export type DeviceEventLog_t = DeviceEventInvalidCard03H | DeviceEventNormalAccess0BH;
+import {DeviceEventWrongPin01H} from "./DeviceEventWrongPin01H";
+import {DeviceEventAccessByPin1CH} from "./DeviceEventAccessByPin1CH";
 
 // noinspection JSUnusedGlobalSymbols
+// refer to Protocol_881E_725Ev2_82xEv5+4V04.pdf::4.2 Function code define table for more detailed
 export enum LogEntryEventType {
     PIN_ERROR = 0x01,
     INVALID_CARD = 0x03,
@@ -16,6 +17,7 @@ export enum LogEntryEventType {
     NORMAL_ACCESS = 0x0B,
     EGRESS = 0x10,
     ALARM_EVENT = 0x11,
+    ACCESS_BY_PIN = 0x1c,
     ANTI_PASS_BACK_ERROR = 0x1E,
 }
 
@@ -26,9 +28,9 @@ export class SoyalDeviceEvent implements IDeviceEvent {
     // data fields
     public readonly eventType: LogEntryEventType;
     public readonly readerID: number;
-    public readonly logEntry: DeviceEventLog_t;
+    public readonly logEntry: IDeviceEventLogPayload;
 
-    public constructor(eventType: LogEntryEventType, readerID: number, logPayload: DeviceEventLog_t) {
+    public constructor(eventType: LogEntryEventType, readerID: number, logPayload: IDeviceEventLogPayload) {
         if (eventType > MAX_UINT8 || readerID > MAX_UINT8) {
             throw new PacketFormatError("data is out of range");
         }
@@ -47,10 +49,17 @@ export class SoyalDeviceEvent implements IDeviceEvent {
         const readerID = buffer[1];
 
         buffer = buffer.subarray(2, buffer.length);
-        let payload: DeviceEventLog_t;
-        let bufferConsumed: number;
+        let payload: IDeviceEventLogPayload;
+        let bufferConsumed: number = 2;
 
         switch (eventType) {
+            case LogEntryEventType.PIN_ERROR: {
+                const result = DeviceEventWrongPin01H.deserialize(buffer);
+
+                payload = result.instance;
+                bufferConsumed = result.bufferConsumed;
+                break;
+            }
             case LogEntryEventType.INVALID_CARD: {
                 const result = DeviceEventInvalidCard03H.deserialize(buffer);
 
@@ -60,6 +69,13 @@ export class SoyalDeviceEvent implements IDeviceEvent {
             }
             case LogEntryEventType.NORMAL_ACCESS: {
                 const result = DeviceEventNormalAccess0BH.deserialize(buffer);
+
+                payload = result.instance;
+                bufferConsumed = result.bufferConsumed;
+                break;
+            }
+            case LogEntryEventType.ACCESS_BY_PIN: {
+                const result = DeviceEventAccessByPin1CH.deserialize(buffer);
 
                 payload = result.instance;
                 bufferConsumed = result.bufferConsumed;
@@ -76,7 +92,7 @@ export class SoyalDeviceEvent implements IDeviceEvent {
 
         return {
             instance: new SoyalDeviceEvent(eventType, readerID, payload),
-            bufferConsumed: bufferConsumed,
+            bufferConsumed: 2 /*eventType and readerID*/ + bufferConsumed,
         };
     }
 
@@ -86,4 +102,5 @@ export class SoyalDeviceEvent implements IDeviceEvent {
 }
 
 export interface IDeviceEventLogPayload extends Serializable {
+    get eventType(): number
 }

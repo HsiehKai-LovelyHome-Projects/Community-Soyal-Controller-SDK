@@ -6,7 +6,7 @@ import {DeviceIOEventKeyPadPressed01H} from "./device_status_event/DeviceStatusK
 import {DeviceStatusNewCardPresent02H} from "./device_status_event/DeviceStatusNewCardPresent02H";
 
 // noinspection JSUnusedGlobalSymbols
-export enum DeviceStatusEventType {
+export enum DeviceStatusType {
     AR721H = 0x0,
     AR727H = 0x0,
 
@@ -20,14 +20,17 @@ export enum DeviceStatusEventType {
 
 export class DeviceStatusResponse09H implements ISoyalResponsePayload {
 
+    public readonly statusType: DeviceStatusType;
     public readonly deviceStatus: IDeviceStatusEventPayload;
 
-    public constructor(deviceStatus: IDeviceStatusEventPayload) {
+    public constructor(statusType: DeviceStatusType, deviceStatus: IDeviceStatusEventPayload) {
+        this.statusType = statusType;
         this.deviceStatus = deviceStatus;
     }
 
     public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceStatusResponse09H> {
-        if (buffer.length < 1) {
+        const incomingBufferLength = buffer.length;
+        if (incomingBufferLength < 1) {
             throw new PacketFormatError("not enough data for deserialization");
         }
 
@@ -35,29 +38,30 @@ export class DeviceStatusResponse09H implements ISoyalResponsePayload {
 
         let data = buffer.subarray(1);
         let event: IDeviceStatusEventPayload;
-        let bufferConsumed: number;
+        let bufferConsumed: number = 1;
+
 
         switch (eventType) {
-            case DeviceStatusEventType.AR721H:
-            case DeviceStatusEventType.AR727H:
-            case DeviceStatusEventType.AR721W:
-            case DeviceStatusEventType.AR721D:
-            case DeviceStatusEventType.AR721Q: {
+            case DeviceStatusType.AR721H:
+            case DeviceStatusType.AR727H:
+            case DeviceStatusType.AR721W:
+            case DeviceStatusType.AR721D:
+            case DeviceStatusType.AR721Q: {
                 const result = DeviceStatusIOStatus00H.deserialize(data);
                 event = result.instance;
-                bufferConsumed = result.bufferConsumed;
+                bufferConsumed += result.bufferConsumed;
                 break;
             }
-            case DeviceStatusEventType.PIN_PAD: {
+            case DeviceStatusType.PIN_PAD: {
                 const result = DeviceIOEventKeyPadPressed01H.deserialize(data);
                 event = result.instance;
-                bufferConsumed = result.bufferConsumed;
+                bufferConsumed += result.bufferConsumed;
                 break;
             }
-            case DeviceStatusEventType.NEW_CARD: {
+            case DeviceStatusType.NEW_CARD: {
                 const result = DeviceStatusNewCardPresent02H.deserialize(data);
                 event = result.instance;
-                bufferConsumed = result.bufferConsumed;
+                bufferConsumed += result.bufferConsumed;
                 break;
             }
             default:
@@ -65,13 +69,14 @@ export class DeviceStatusResponse09H implements ISoyalResponsePayload {
         }
 
         return {
-            instance: new DeviceStatusResponse09H(event),
-            bufferConsumed: buffer.length - data.length,
+            instance: new DeviceStatusResponse09H(eventType, event),
+            bufferConsumed: bufferConsumed,
         };
     }
 
     public serialize(): Uint8Array {
-        return this.deviceStatus.serialize();
+        let packet = [this.statusType, ...this.deviceStatus.serialize()];
+        return Uint8Array.from(packet);
     }
 }
 

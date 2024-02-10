@@ -1,7 +1,7 @@
 import {
     composeUInt16MSBLSB,
-    getBytesFromUInt16BE, getBytesFromUInt32BE, MAX_CARD_UID,
-    MAX_UINT16, MAX_UINT32,
+    getBytesFromUInt16BE,
+    MAX_UINT16,
     MAX_UINT8,
     timestamp2SoyalFormat,
     timestampFromSoyalFormat
@@ -9,8 +9,9 @@ import {
 import {PacketFormatError, PacketValueError} from "../Errors";
 import {DeserializeResult} from "../Serializable";
 import {IDeviceEventLogPayload, LogEntryEventType} from "./SoyalDeviceEvent";
+import {DeviceStatusType} from "../response/DeviceStatusResponse09H";
 
-export class DeviceEventInvalidCard03H implements IDeviceEventLogPayload {
+export class DeviceEventWrongPin01H implements IDeviceEventLogPayload {
     // data fields
     public readonly timestamp: Date;
     public readonly address: number;
@@ -18,19 +19,19 @@ export class DeviceEventInvalidCard03H implements IDeviceEventLogPayload {
     public readonly flag: number; // bit7:  Forced Open Alarm
     public readonly bitSelection: number; // (20*xxx#)
     public readonly wiegandFlag: number; // if message comes from Wiegand reader, bit 7 = 1
+    public readonly reserved_14_15: number = 0; // site is useless here
     public readonly readerID: number;// == doorNumber
 
     public readonly elevatorCtrlParameter: number; // 401RO16 Parameter Setting (24*xxx#)
 
-    public readonly cardUID: number; // 16 bits only
+    public readonly reserved_18_19: number = 0; // cardID is useless here
 
-    public readonly sorDeductedAmount: number;
-    public readonly sorBalance: number;
+    public readonly unknown_20_21: number = 0;  // TODO figure it out wtf is this since it is not listed on the doc
+    public readonly enteredPin: number;
 
     public constructor(timestamp: Date, address: number, dutyKey: number, flag: number,
                        bitSelection: number, wiegandFlag: number, readerID: number,
-                       elevatorCtrlParameter: number, cardUID: number,
-                       sorDeductedAmount: number, sorBalance: number) {
+                       elevatorCtrlParameter: number, enteredPin: number) {
         if (address > MAX_UINT16) {
             throw new PacketFormatError("data is out of range");
         }
@@ -52,13 +53,7 @@ export class DeviceEventInvalidCard03H implements IDeviceEventLogPayload {
         if (elevatorCtrlParameter > MAX_UINT8) {
             throw new PacketFormatError("data is out of range");
         }
-        if (cardUID > MAX_UINT32) {
-            throw new PacketFormatError("data is out of range");
-        }
-        if (sorDeductedAmount > MAX_UINT16) {
-            throw new PacketFormatError("data is out of range");
-        }
-        if (sorBalance > MAX_UINT16) {
+        if (enteredPin > 9999) { // TODO 5 digit pin is not yet supported by us
             throw new PacketFormatError("data is out of range");
         }
 
@@ -70,16 +65,14 @@ export class DeviceEventInvalidCard03H implements IDeviceEventLogPayload {
         this.wiegandFlag = wiegandFlag;
         this.readerID = readerID;
         this.elevatorCtrlParameter = elevatorCtrlParameter;
-        this.cardUID = cardUID;
-        this.sorDeductedAmount = sorDeductedAmount;
-        this.sorBalance = sorBalance;
+        this.enteredPin = enteredPin;
     }
 
     get eventType(): number {
-        return LogEntryEventType.INVALID_CARD;
+        return LogEntryEventType.PIN_ERROR;
     }
 
-    public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceEventInvalidCard03H> {
+    public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceEventWrongPin01H> {
         if (buffer.length < 24) {
             throw new PacketFormatError("not enough data");
         }
@@ -89,29 +82,22 @@ export class DeviceEventInvalidCard03H implements IDeviceEventLogPayload {
         }
 
         const timestamp = timestampFromSoyalFormat(buffer);
-        const site = composeUInt16MSBLSB(buffer[14], buffer[15]);
-        const cardID = composeUInt16MSBLSB(buffer[18], buffer[19]);
-        const cardUID = (site << 16) + cardID;
+
         return {
-            instance: new DeviceEventInvalidCard03H(timestamp, composeUInt16MSBLSB(buffer[8], buffer[9]),
+            instance: new DeviceEventWrongPin01H(timestamp, composeUInt16MSBLSB(buffer[8], buffer[9]),
                 buffer[10], buffer[11], buffer[12], buffer[13],
-                buffer[16], buffer[17], cardUID,
-                composeUInt16MSBLSB(buffer[20], buffer[21]), composeUInt16MSBLSB(buffer[22], buffer[23])),
+                buffer[16], buffer[17], composeUInt16MSBLSB(buffer[22], buffer[23])),
             bufferConsumed: 24,
         }
     }
 
     public serialize(): Uint8Array {
         let data = timestamp2SoyalFormat(this.timestamp);
-        const cardUIDRaw = getBytesFromUInt32BE(this.cardUID);
-
 
         data.push(...getBytesFromUInt16BE(this.address),
-            this.dutyKey, this.flag, this.bitSelection, this.wiegandFlag,
-            cardUIDRaw[0], cardUIDRaw[1], // site
-            this.readerID, this.elevatorCtrlParameter,
-            cardUIDRaw[2], cardUIDRaw[3], // card id
-            ...getBytesFromUInt16BE(this.sorDeductedAmount), ...getBytesFromUInt16BE(this.sorBalance));
+            this.dutyKey, this.flag, this.bitSelection, this.wiegandFlag, ...getBytesFromUInt16BE(this.reserved_14_15),
+            this.readerID, this.elevatorCtrlParameter, ...getBytesFromUInt16BE(this.reserved_18_19),
+            ...getBytesFromUInt16BE(this.unknown_20_21), ...getBytesFromUInt16BE(this.enteredPin));
 
         return Uint8Array.from(data);
     }

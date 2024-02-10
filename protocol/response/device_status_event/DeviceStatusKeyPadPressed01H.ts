@@ -44,7 +44,7 @@ export class DeviceIOEventKeyPadPressed01H implements IDeviceStatusEventPayload 
             throw new PacketFormatError("not enough data for deserialization");
         }
 
-        const isMode8 = (buffer[0] & 0b01000000) > 0;
+        const isMode8 = (buffer[0] & 0b10000000) > 0;
         const fifthPinDigit = buffer[0] % 10;
         const fourPinDigits = composeUInt16MSBLSB(buffer[1], buffer[2]);
 

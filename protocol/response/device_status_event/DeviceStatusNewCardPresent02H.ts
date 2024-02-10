@@ -78,9 +78,9 @@ export class DeviceStatusNewCardPresent02H implements IDeviceStatusEventPayload 
             throw new PacketFormatError("not enough data for deserialization");
         }
 
-        const cardUID = buffer[7] << 32 +
-            composeUInt16MSBLSB(buffer[1], buffer[2]) << 16 +
-            composeUInt16MSBLSB(buffer[5], buffer[6]);
+        const site = composeUInt16MSBLSB(buffer[1], buffer[2]);
+        const cardID = composeUInt16MSBLSB(buffer[5], buffer[6]);
+        const cardUID = (buffer[7] * 2 ** 32) + (site << 16) + cardID;
 
         const value = composeUInt16MSBLSB(buffer[3], buffer[4]);
 
