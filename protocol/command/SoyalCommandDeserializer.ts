@@ -10,6 +10,7 @@ import {ControlRelayCommand21H} from "./ControlRelayCommand21H";
 import {ReadEEPROMResponse03H} from "../response/ReadEEPROMResponse03H";
 import {WriteEEPROMCommand20H} from "./WriteEEPROMCommand20H";
 import {SetCardContentCommand83H} from "./SetCardContentCommand83H";
+import {WriteRTCCommand23H} from "./WriteRTCCommand23H";
 
 export class SoyalCommandDeserializer {
     public static deserialize(buffer: Uint8Array): DeserializeResult<SoyalCommand> {
@@ -58,6 +59,12 @@ export class SoyalCommandDeserializer {
             }
             case SoyalCommandCode.CONTROL_RELAY_21H: {
                 const result = ControlRelayCommand21H.deserialize(buffer);
+                payload = result.instance;
+                bufferConsumed += result.bufferConsumed;
+                break;
+            }
+            case SoyalCommandCode.WRITE_RTC_23H: {
+                const result = WriteRTCCommand23H.deserialize(buffer);
                 payload = result.instance;
                 bufferConsumed += result.bufferConsumed;
                 break;
