@@ -3,6 +3,7 @@ import {PacketFormatError} from "../Errors";
 import {ISoyalResponsePayload} from "./SoyalResponse";
 import {MAX_UINT8} from "../Commons";
 
+// ack
 export class DeviceEchoResponse04H implements ISoyalResponsePayload {
 
     public readonly controllerNodeID: number;

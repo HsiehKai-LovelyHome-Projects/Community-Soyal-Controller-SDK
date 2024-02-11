@@ -4,11 +4,10 @@ import {PacketFormatError, UnknownProtocol} from "../Errors";
 import {checkBufferLength, MAX_UINT8} from "../Commons";
 import {DeviceEchoResponse05H} from "./DeviceEchoResponse05H";
 import {DeviceEchoResponse04H} from "./DeviceEchoResponse04H";
-import {DoorStatusResponse03H} from "./DoorStatusResponse03H";
+import {DeviceEchoResponse03H} from "./DeviceEchoResponse03H";
 
 export enum SoyalFunctionCode {
-    READ_EEPROM_RESPONSE = 0x03, // conflicted with DOOR_STATUS_RESPONSE this must be decoded by yourself
-    DOOR_STATUS_RESPONSE = 0x03,
+    DEVICE_ECHO_RESPONSE = 0x03,
     DEVICE_ECHO_RESPONSE_ACK = 0x04,
     DEVICE_ECHO_RESPONSE_NACK = 0x05,
     DEVICE_STATUS_EVENT = 0x09,
@@ -32,7 +31,7 @@ export class SoyalResponse implements ISoyalResponse {
         this.payload = payload;
     }
 
-    public static deserializeWithDeserializer(buffer: Uint8Array,
+    private static deserializeWithDeserializer(buffer: Uint8Array,
                                               deserializer: (buffer: Uint8Array) => DeserializeResult<ISoyalResponsePayload>): DeserializeResult<SoyalResponse> {
         checkBufferLength(buffer, 2);
 
@@ -60,8 +59,8 @@ export class SoyalResponse implements ISoyalResponse {
 
         const functionCode = buffer[0];
         switch (functionCode) {
-            case SoyalFunctionCode.DOOR_STATUS_RESPONSE:
-                return SoyalResponse.deserializeWithDeserializer(buffer, DoorStatusResponse03H.deserialize);
+            case SoyalFunctionCode.DEVICE_ECHO_RESPONSE:
+                return SoyalResponse.deserializeWithDeserializer(buffer, DeviceEchoResponse03H.deserialize);
 
             case SoyalFunctionCode.DEVICE_STATUS_EVENT:
                 return SoyalResponse.deserializeWithDeserializer(buffer, DeviceStatusResponse09H.deserialize);
