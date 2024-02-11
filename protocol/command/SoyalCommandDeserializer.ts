@@ -7,6 +7,9 @@ import {PromptAcceptedMessage04H} from "./PromptAcceptedMessage04H";
 import {RemoveOldestDeviceEventLogCommand37H} from "./RemoveOldestDeviceEventLogCommand37H";
 import {RemoveAllDeviceEventLogCommand2DH} from "./RemoveAllDeviceEventLogCommand2DH";
 import {ControlRelayCommand21H} from "./ControlRelayCommand21H";
+import {ReadEEPROMResponse03H} from "../response/ReadEEPROMResponse03H";
+import {WriteEEPROMCommand20H} from "./WriteEEPROMCommand20H";
+import {SetCardContentCommand83H} from "./SetCardContentCommand83H";
 
 export class SoyalCommandDeserializer {
     public static deserialize(buffer: Uint8Array): DeserializeResult<SoyalCommand> {
@@ -35,9 +38,20 @@ export class SoyalCommandDeserializer {
                 bufferConsumed += result.bufferConsumed;
                 break;
             }
-
+            case SoyalCommandCode.READ_EEPROM_12H: {
+                const result = ReadEEPROMResponse03H.deserialize(buffer);
+                payload = result.instance;
+                bufferConsumed += result.bufferConsumed;
+                break;
+            }
             case SoyalCommandCode.GET_DEVICE_STATUS_18H: {
                 const result = GetDeviceStatusCommand18H.deserialize(buffer);
+                payload = result.instance;
+                bufferConsumed += result.bufferConsumed;
+                break;
+            }
+            case SoyalCommandCode.WRITE_EEPROM_20H: {
+                const result = WriteEEPROMCommand20H.deserialize(buffer);
                 payload = result.instance;
                 bufferConsumed += result.bufferConsumed;
                 break;
@@ -61,7 +75,16 @@ export class SoyalCommandDeserializer {
                 break;
             }
             case SoyalCommandCode.REMOVE_OLDEST_DEVICE_EVENT_LOG_37H: {
-
+                const result = RemoveOldestDeviceEventLogCommand37H.deserialize(buffer);
+                payload = result.instance;
+                bufferConsumed += result.bufferConsumed;
+                break;
+            }
+            case SoyalCommandCode.SET_CARD_CONTENT_83H: {
+                const result = SetCardContentCommand83H.deserialize(buffer);
+                payload = result.instance;
+                bufferConsumed += result.bufferConsumed;
+                break;
             }
             default:
                 throw new UnknownProtocol(`Unknown command ID: ${commandID.toString(16)}`);

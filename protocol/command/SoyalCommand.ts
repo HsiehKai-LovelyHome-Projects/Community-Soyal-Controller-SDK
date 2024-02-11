@@ -7,8 +7,10 @@ export enum SoyalCommandCode {
     PROMPT_ACCEPTED_MESSAGE_04H = 0x04, // open door
     PROMPT_INVALID_MESSAGE_05H = 0x05, // deny open door
 
+    READ_EEPROM_12H = 0x12,
     GET_DEVICE_STATUS_18H = 0x18, // event polling
 
+    WRITE_EEPROM_20H = 0x20,
     CONTROL_RELAY_21H = 0x21,
     GET_OLDEST_DEVICE_EVENT_LOG_25H = 0x25,
 

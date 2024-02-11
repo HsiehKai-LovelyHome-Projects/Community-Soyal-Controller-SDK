@@ -1,3 +1,5 @@
+import {PacketFormatError} from "./Errors";
+
 export const MAX_UINT8 = 0xff;
 export const MAX_UINT16 = 0xffff;
 
@@ -95,4 +97,20 @@ export function visualizeByte(number: number): string {
     }
 
     return number.toString(16).toUpperCase() + "H";
+}
+
+export function checkUnsignedField(value: number, maxValue: number) {
+    if (value < 0) {
+        throw new PacketFormatError(`given value (${value}) is a negative value`);
+    }
+
+    if (value > maxValue) {
+        throw new PacketFormatError(`given value (${value}) is out of range`);
+    }
+}
+
+export function checkBufferLength(buffer: Uint8Array, required: number) {
+    if (buffer.length < required) {
+        throw new PacketFormatError("buffer length is too short");
+    }
 }
