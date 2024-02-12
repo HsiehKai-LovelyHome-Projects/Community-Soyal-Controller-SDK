@@ -7,10 +7,11 @@ import {PromptAcceptedMessage04H} from "./PromptAcceptedMessage04H";
 import {RemoveOldestDeviceEventLogCommand37H} from "./RemoveOldestDeviceEventLogCommand37H";
 import {RemoveAllDeviceEventLogCommand2DH} from "./RemoveAllDeviceEventLogCommand2DH";
 import {ControlRelayCommand21H} from "./ControlRelayCommand21H";
-import {ReadEEPROMResponse03H} from "../response/ReadEEPROMResponse03H";
 import {WriteEEPROMCommand20H} from "./WriteEEPROMCommand20H";
 import {SetCardContentCommand83H} from "./SetCardContentCommand83H";
 import {WriteRTCCommand23H} from "./WriteRTCCommand23H";
+import {ReadEEPROMResponse03H} from "../response/ReadEEPROMResponse";
+import {DeviceEchoResponse03H} from "../response/DeviceEchoResponse03H";
 
 export class SoyalCommandDeserializer {
     public static deserialize(buffer: Uint8Array): DeserializeResult<SoyalCommand> {
@@ -40,7 +41,9 @@ export class SoyalCommandDeserializer {
                 break;
             }
             case SoyalCommandCode.READ_EEPROM_12H: {
-                const result = ReadEEPROMResponse03H.deserialize(buffer);
+                const result = ReadEEPROMResponse03H.deserialize(
+                    DeviceEchoResponse03H.deserialize(buffer).instance
+                );
                 payload = result.instance;
                 bufferConsumed += result.bufferConsumed;
                 break;

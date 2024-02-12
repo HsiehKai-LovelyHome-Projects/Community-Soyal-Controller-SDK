@@ -19,7 +19,8 @@ export enum SoyalCommandCode {
     REMOVE_OLDEST_DEVICE_EVENT_LOG_37H = 0x37,
     REMOVE_ALL_DEVICE_EVENT_LOG_2DH = 0x2d,
 
-    SET_CARD_CONTENT_83H = 0x83
+    SET_CARD_CONTENT_83H = 0x83,
+    CLEARING_ALL_CARD_85H = 0x85,
 }
 
 export class SoyalCommand implements ISoyalCommand {
