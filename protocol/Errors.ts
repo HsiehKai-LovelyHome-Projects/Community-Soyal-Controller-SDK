@@ -35,6 +35,14 @@ export class UnsuccessfulOperation extends Error {
     }
 }
 
+export class DeviceNoResponse extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'DeviceNoResponse';
+    }
+}
+
+
 export class InvalidProtocol extends Error {
     constructor(message: string) {
         super(message);
