@@ -2,6 +2,9 @@ import {expect, test} from "@jest/globals";
 import {
     composeCardUID,
     composeUInt16MSBLSB,
+    composeUInt32MSBLSB,
+    timestamp2SoyalFormat,
+    timestampFromSoyalFormat,
     getBytesFromUInt16BE,
     getBytesFromUInt32BE,
     getBytesFromUInt40BE,
@@ -39,8 +42,21 @@ test("getBytesFromUInt40BE", () => {
     expect(bytes).toStrictEqual([0x12, 0x34, 0x56, 0x78, 0x9a]);
 });
 
-// TODO timestampFromSoyalFormat
-// TODO timestamp2SoyalFormat
+test("timestamp2SoyalFormat", () => {
+    // 2.8: sec, min, hour, weekday, day, month, year
+    expect(timestamp2SoyalFormat(new Date(2006, 4, 3, 2, 1, 0))).toStrictEqual([0, 1, 2, 4, 3, 5, 6]);
+});
+
+test("timestampFromSoyalFormat", () => {
+    const timestamp = new Date(2026, 8, 28, 9, 30, 15);
+    expect(timestampFromSoyalFormat(Uint8Array.from(timestamp2SoyalFormat(timestamp))).getTime())
+        .toBe(timestamp.getTime());
+});
+
+test("composeUInt32MSBLSB", () => {
+    expect(composeUInt32MSBLSB([0x12, 0x34, 0x56, 0x78])).toBe(0x12345678);
+    expect(composeUInt32MSBLSB([0x87, 0x65, 0x43, 0x21])).toBe(0x87654321);
+});
 
 test("visualizeHex", () => {
     expect(visualizeByte(0x78)).toBe("78H");

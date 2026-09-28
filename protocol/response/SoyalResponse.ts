@@ -50,7 +50,7 @@ export class SoyalResponse implements ISoyalResponse {
 
         return {
             instance: new SoyalResponse(functionCode, readerID, payload),
-            bufferConsumed: bufferConsumed,
+            bufferConsumed: 2 /* function code and reader ID */ + bufferConsumed,
         };
     }
 

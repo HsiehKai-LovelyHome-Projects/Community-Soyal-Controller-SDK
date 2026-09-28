@@ -66,9 +66,9 @@ export interface SoyalDeviceEmulatorOptions {
     readerType?: number;
     eepromSize?: number;
     /**
-     * "extended" (default): ACK / NACK followed by reader type, I/O status, parameters and firmware version,
+     * "extended": ACK / NACK followed by reader type, I/O status, parameters and firmware version,
      * as documented in 2.11 (1) for firmware after 2009.FEB.09.
-     * "short": bare `04 <node>` / `05 <node>` as shown in most examples of the manual.
+     * "short" (default): bare `04 <node>` / `05 <node>`, what H series readers such as AR-725H send.
      */
     ackFormat?: "extended" | "short";
 }
@@ -120,7 +120,7 @@ export class SoyalDeviceEmulator {
         this.eeprom = new Uint8Array(options.eepromSize ?? 0x8000);
         this.firmwareVersion = options.firmwareVersion ?? 0x63;
         this.readerType = options.readerType ?? 0x21;
-        this.ackFormat = options.ackFormat ?? "extended";
+        this.ackFormat = options.ackFormat ?? "short";
         this.loadFactoryDefault(options.nodeID ?? 1);
     }
 
@@ -529,7 +529,7 @@ export class SoyalDeviceEmulator {
     private loadFactoryDefault(nodeID: number) {
         this.eeprom.fill(0);
         this.eeprom[EEPROM_NODE_ID] = nodeID;
-        this.eeprom[EEPROM_FUNCTION_OPTION_0] = 0x10; // enable egress button
+        this.eeprom[EEPROM_FUNCTION_OPTION_0] = 0x18; // enable egress button, 20*xxx# as seen on a real AR-725H
     }
 
     // ---------------------------------------------------------------------------------------------------------------

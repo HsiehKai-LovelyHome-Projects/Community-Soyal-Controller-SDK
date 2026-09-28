@@ -1,5 +1,13 @@
 import {ISoyalCommandPayload} from "./SoyalCommand";
-import {getBytesFromUInt16BE, getBytesFromUInt32BE, MAX_UINT16, MAX_UINT32, MAX_UINT8} from "../Commons";
+import {
+    composeUInt16MSBLSB,
+    composeUInt32MSBLSB,
+    getBytesFromUInt16BE,
+    getBytesFromUInt32BE,
+    MAX_UINT16,
+    MAX_UINT32,
+    MAX_UINT8
+} from "../Commons";
 import {PacketFormatError} from "../Errors";
 import {DeserializeResult} from "../Serializable";
 
@@ -33,12 +41,36 @@ export class PromptAcceptedMessage04H implements ISoyalCommandPayload {
         this.liftStops = liftStops;
     }
 
-    public static deserialize(_: Uint8Array): DeserializeResult<PromptAcceptedMessage04H> {
-        // TODO add AR727 support
+    /**
+     * Optional fields are cumulative: [SS] [UID H] [UID L] [display H] [display L] [lift LL] [LH] [HL] [HH]
+     */
+    public static deserialize(buffer: Uint8Array): DeserializeResult<PromptAcceptedMessage04H> {
+        let auxiliaryCommand: number | undefined;
+        let cardUID: number | undefined;
+        let lcdCommand: number | undefined;
+        let liftStops: number | undefined;
+        let bufferConsumed = 0;
+
+        if (buffer.length >= 1) {
+            auxiliaryCommand = buffer[0];
+            bufferConsumed = 1;
+        }
+        if (buffer.length >= 3) {
+            cardUID = composeUInt16MSBLSB(buffer[1], buffer[2]);
+            bufferConsumed = 3;
+        }
+        if (buffer.length >= 5) {
+            lcdCommand = composeUInt16MSBLSB(buffer[3], buffer[4]);
+            bufferConsumed = 5;
+        }
+        if (buffer.length >= 9) {
+            liftStops = composeUInt32MSBLSB(buffer.subarray(5, 9));
+            bufferConsumed = 9;
+        }
 
         return {
-            instance: new PromptAcceptedMessage04H(),
-            bufferConsumed: 0,
+            instance: new PromptAcceptedMessage04H(auxiliaryCommand, cardUID, lcdCommand, liftStops),
+            bufferConsumed: bufferConsumed,
         }
     }
 

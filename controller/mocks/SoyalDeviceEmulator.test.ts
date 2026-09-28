@@ -19,6 +19,7 @@ import {ReadRTCResponse} from "../../protocol/response/ReadRTCResponse";
 import {WriteEEPROMCommand20H} from "../../protocol/command/WriteEEPROMCommand20H";
 import {ReadEEPROMCommand12H} from "../../protocol/command/ReadEEPROMCommand12H";
 import {RemoveOldestDeviceEventLogCommand37H} from "../../protocol/command/RemoveOldestDeviceEventLogCommand37H";
+import {DeviceEchoResponse04H} from "../../protocol/response/DeviceEchoResponse04H";
 
 function frame(command: number, payload: ISoyalCommandPayload | Uint8Array, nodeID: number = 1): Uint8Array {
     const data = payload instanceof Uint8Array ? payload : payload.serialize();
@@ -87,6 +88,33 @@ test("poll_legacyTenBytesLayout_forcedDoorRelayOnInOddYears", () => {
 
     expect(emulator.doorRelayForcedByPollCount).toBe(1);
     expect(emulator.doorRelayOn).toBe(true);
+});
+
+test("poll_realAr725hCapture_legacyLayoutOpenedTheDoor", () => {
+    // captured on 2025-01-22 with the legacy 10 bytes 18H layout, the reply reports the door relay on (0x40)
+    const emulator = new SoyalDeviceEmulator();
+    emulator.doorOpened = true; // bit 0, the door sensor followed the relay in the capture
+
+    const responses = emulator.receive(Buffer.from("7e0e0118001e0b04160100041900fd77", "hex"));
+
+    expect(responses.map(response => Buffer.from(response).toString("hex")))
+        .toStrictEqual(["7e0a0009010041001800ae11"]);
+});
+
+test("ack_shortAndExtended", () => {
+    for (const ackFormat of ["short", "extended"] as const) {
+        const emulator = new SoyalDeviceEmulator({ackFormat});
+        const response = exchange(emulator, SoyalCommandCode.REMOVE_ALL_DEVICE_EVENT_LOG_2DH);
+        const ack = response.payload as DeviceEchoResponse04H;
+
+        expect(response.functionCode).toBe(SoyalFunctionCode.DEVICE_ECHO_RESPONSE_ACK);
+        expect(response.readerID).toBe(1);
+        expect(ack.isExtended).toBe(ackFormat === "extended");
+        if (ack.isExtended) {
+            expect(ack.readerType).toBe(emulator.readerType);
+            expect(ack.firmwareVersion).toBe(emulator.firmwareVersion);
+        }
+    }
 });
 
 test("presentCard_thenAccept", () => {

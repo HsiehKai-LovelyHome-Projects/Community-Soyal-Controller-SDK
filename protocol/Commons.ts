@@ -17,6 +17,13 @@ export function composeUInt16MSBLSB(msb: number, lsb: number): number {
 }
 
 /**
+ * [0x12 0x34 0x56 0x78] -> 0x12345678, arithmetic to stay positive above 0x7FFFFFFF
+ */
+export function composeUInt32MSBLSB(bytes: ArrayLike<number>): number {
+    return ((bytes[0] * 0x100 + bytes[1]) * 0x100 + bytes[2]) * 0x100 + bytes[3];
+}
+
+/**
  * [ID code (bit 39~32)] [site code (bit 31~16)] [card code (bit 15~0)] -> 40 bits card UID
  *
  * Arithmetic instead of bitwise operations: `site << 16` overflows into the sign bit when site >= 0x8000.
@@ -76,18 +83,13 @@ export function timestampFromSoyalFormat(buffer: Uint8Array): Date {
     return new Date(year, month, date, hour, minute, second);
 }
 
+export const SOYAL_TIMESTAMP_LENGTH = 7;
+
 /**
- * payload[0] = timestamp.getSeconds(); // Second: 0 - 59
- * payload[1] = timestamp.getMinutes(); // Minute: 0 - 59
- * payload[2] = timestamp.getHours(); // Hour: 0 - 23
- * payload[3] = timestamp.getDay() + 1; // Weekday: 1 - 7
- * payload[4] = timestamp.getDate(); // Day: 1 - 31
- * payload[5] = timestamp.getMonth() + 1; // Month: 1 - 12
- * payload[6] = timestamp.getDay() + 1;
- * payload[7] = timestamp.getFullYear() % 100;
+ * 7 bytes: [second] [minute] [hour] [weekday 1~7 (SUN~SAT)] [day] [month] [year 0~99]
  */
 export function timestamp2SoyalFormat(timestamp: Date): Array<number> {
-    const payload = new Array<number>(9);
+    const payload = new Array<number>(SOYAL_TIMESTAMP_LENGTH);
 
     payload[0] = timestamp.getSeconds(); // Second: 0 - 59
     payload[1] = timestamp.getMinutes(); // Minute: 0 - 59

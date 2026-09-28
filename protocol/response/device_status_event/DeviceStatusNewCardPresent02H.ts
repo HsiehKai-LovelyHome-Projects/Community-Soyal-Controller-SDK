@@ -123,8 +123,9 @@ export class DeviceStatusNewCardPresent02H implements IDeviceStatusEventPayload 
         const cardUIDBytes = getBytesFromUInt40BE(this.cardUID);
         const valueBytes = getBytesFromUInt16BE(this.value);
 
-        let packet = [this.dutyCode, cardUIDBytes[3], cardUIDBytes[2], valueBytes[1], valueBytes[0],
-            cardUIDBytes[1], cardUIDBytes[0], cardUIDBytes[4], this.deviceParameters, this.userStatus];
+        // cardUIDBytes: [ID code] [site H] [site L] [card H] [card L]
+        let packet = [this.dutyCode, cardUIDBytes[1], cardUIDBytes[2], ...valueBytes,
+            cardUIDBytes[3], cardUIDBytes[4], cardUIDBytes[0], this.deviceParameters, this.userStatus];
 
         if (this.identify !== undefined) {
             packet.push(this.identify, this.tagType!, this.flag!);

@@ -63,6 +63,6 @@ export class DeviceStatusIOStatus00H implements IDeviceStatusEventPayload {
     }
 
     public serialize(): Uint8Array {
-        return Uint8Array.from([this.data0, this.data1, this.data2, this.data3]);
+        return Uint8Array.from([this.data0, this.data1, this.data2, this.data3, ...(this.eventLog?.serialize() ?? [])]);
     }
 }

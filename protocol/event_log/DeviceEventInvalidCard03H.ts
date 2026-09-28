@@ -107,7 +107,8 @@ export class DeviceEventInvalidCard03H implements IDeviceEventLogPayload {
         const cardUIDRaw = getBytesFromUInt32BE(this.cardUID);
 
 
-        data.push(...getBytesFromUInt16BE(this.address),
+        data.push(this.readerID, // message source
+            ...getBytesFromUInt16BE(this.address),
             this.dutyKey, this.flag, this.bitSelection, this.wiegandFlag,
             cardUIDRaw[0], cardUIDRaw[1], // site
             this.readerID, this.elevatorCtrlParameter,

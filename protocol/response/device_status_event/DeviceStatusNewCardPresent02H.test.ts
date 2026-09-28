@@ -14,6 +14,12 @@ test("deserialize_manualExample", () => {
     expect(deserialized.instance.deviceParameters).toBe(0x10);
 });
 
+test("roundTrip", () => {
+    const buffer = Uint8Array.from([0x1E, 0x63, 0x6B, 0x04, 0xD2, 0xB8, 0xB4, 0x04, 0x10, 0x00]);
+    expect(Array.from(DeviceStatusNewCardPresent02H.deserialize(buffer).instance.serialize()))
+        .toStrictEqual(Array.from(buffer));
+});
+
 test("deserialize_siteCodeWithHighBitSet", () => {
     const deserialized = DeviceStatusNewCardPresent02H.deserialize(
         Uint8Array.from([0x00, 0xFB, 0x51, 0x00, 0x00, 0xC6, 0x52, 0x00, 0x18, 0x00]));
