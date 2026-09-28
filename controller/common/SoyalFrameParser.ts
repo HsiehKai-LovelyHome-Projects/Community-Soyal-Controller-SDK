@@ -64,8 +64,7 @@ export class SoyalFrameParser {
                 continue;
             }
 
-            const frameLength = headLength + 1 + length;
-            if (this.pending.length < frameLength) {
+            if (this.pending.length < headLength + 1 + length) {
                 // a garbage head with a large length would swallow the frames behind it, resync on the first
                 // complete and valid frame found further in the buffer
                 const resyncOffset = this.findCompleteFrame(1);
@@ -76,10 +75,10 @@ export class SoyalFrameParser {
                 break; // wait for the rest of the frame
             }
 
-            const frame = Uint8Array.from(this.pending.slice(0, frameLength));
-            if (SoyalFrameParser.checksumMatches(frame, headLength)) {
+            const frame = this.validFrameAt(0);
+            if (frame) {
                 frames.push(frame);
-                this.pending.splice(0, frameLength);
+                this.pending.splice(0, frame.length);
             } else {
                 this.drop(1);
             }
@@ -96,12 +95,7 @@ export class SoyalFrameParser {
         const headLength = this.head.length;
 
         for (let offset = 0; offset < this.pending.length; offset++) {
-            let matched = 0;
-            while (matched < headLength && offset + matched < this.pending.length &&
-            this.pending[offset + matched] === this.head[matched]) {
-                matched++;
-            }
-
+            const matched = this.headBytesAt(offset);
             if (matched === headLength || offset + matched === this.pending.length) {
                 // complete head, or a partial head at the very end of the buffer
                 this.drop(offset);
@@ -115,30 +109,40 @@ export class SoyalFrameParser {
 
     /** offset of the first complete frame with valid checksums at or after `from`, -1 if none */
     private findCompleteFrame(from: number): number {
-        const headLength = this.head.length;
-
-        for (let offset = from; offset + headLength < this.pending.length; offset++) {
-            let matched = 0;
-            while (matched < headLength && this.pending[offset + matched] === this.head[matched]) {
-                matched++;
-            }
-            if (matched < headLength) {
-                continue;
-            }
-
-            const length = this.pending[offset + headLength];
-            const frameLength = headLength + 1 + length;
-            if (length < SoyalFrameParser.MIN_LENGTH || offset + frameLength > this.pending.length) {
-                continue;
-            }
-
-            const frame = Uint8Array.from(this.pending.slice(offset, offset + frameLength));
-            if (SoyalFrameParser.checksumMatches(frame, headLength)) {
+        for (let offset = from; offset + this.head.length < this.pending.length; offset++) {
+            if (this.validFrameAt(offset)) {
                 return offset;
             }
         }
 
         return -1;
+    }
+
+    /** number of head bytes found at this offset, up to the end of the buffer */
+    private headBytesAt(offset: number): number {
+        let matched = 0;
+        while (matched < this.head.length && offset + matched < this.pending.length &&
+        this.pending[offset + matched] === this.head[matched]) {
+            matched++;
+        }
+        return matched;
+    }
+
+    /** the frame at this offset when it is complete and its checksums match, else null */
+    private validFrameAt(offset: number): Uint8Array | null {
+        const headLength = this.head.length;
+        if (this.headBytesAt(offset) < headLength || offset + headLength >= this.pending.length) {
+            return null;
+        }
+
+        const length = this.pending[offset + headLength];
+        const frameLength = headLength + 1 + length;
+        if (length < SoyalFrameParser.MIN_LENGTH || offset + frameLength > this.pending.length) {
+            return null;
+        }
+
+        const frame = Uint8Array.from(this.pending.slice(offset, offset + frameLength));
+        return SoyalFrameParser.checksumMatches(frame, headLength) ? frame : null;
     }
 
     private drop(count: number) {

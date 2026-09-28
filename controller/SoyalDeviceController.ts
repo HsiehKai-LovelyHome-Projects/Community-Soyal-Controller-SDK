@@ -137,9 +137,12 @@ export class SoyalDeviceController {
         });
 
         port.on("data", (data: Buffer) => this.onData(data));
-        port.on("error", async (err: Error) => {
+        port.on("error", (err: Error) => {
             console.error(`[SOYAL_CONTROLLER] Protocol error:`, err);
-            await this.onSerialError?.(err);
+            // a failing handler must not become an unhandled rejection, which stops the process
+            Promise.resolve()
+                .then(() => this.onSerialError?.(err))
+                .catch(handlerErr => console.error("[SOYAL_CONTROLLER] Serial error handler failed:", handlerErr));
         });
 
         if (this.checkReaderOnOpen) {

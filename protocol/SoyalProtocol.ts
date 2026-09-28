@@ -15,6 +15,10 @@ export const SOYAL_PROTOCOL_SECURITY_SHORT = new SoyalHeader([0x7F]);
 export const SOYAL_PROTOCOL_LARGE = new SoyalHeader([0xFF, 0x00, 0x5A, 0xA5]);
 export const SOYAL_PROTOCOL_SECURITY_LARGE = new SoyalHeader([0xFF, 0x00, 0x55, 0xAA]);
 
+const HEADERS: readonly SoyalHeader[] = [
+    SOYAL_PROTOCOL_SHORT, SOYAL_PROTOCOL_SECURITY_SHORT, SOYAL_PROTOCOL_LARGE, SOYAL_PROTOCOL_SECURITY_LARGE,
+];
+
 export const LENGTH_FIELD_LENGTH = 1;
 export const DESTINATION_ID_FIELD_LENGTH = 1;
 export const XOR_FIELD_LENGTH = 1;
@@ -32,8 +36,7 @@ export class SoyalProtocol implements Serializable {
 
     public constructor(head: SoyalHeader, destinationID: number,
                        payload: Uint8Array) {
-        if (head != SOYAL_PROTOCOL_SHORT && head != SOYAL_PROTOCOL_SECURITY_SHORT &&
-            head != SOYAL_PROTOCOL_LARGE && head != SOYAL_PROTOCOL_SECURITY_LARGE) {
+        if (!HEADERS.includes(head)) {
             throw new UnknownProtocol("unknown protocol");
         }
 
@@ -53,34 +56,9 @@ export class SoyalProtocol implements Serializable {
 
     public static deserialize(buffer: Uint8Array): SoyalProtocol {
         const minPayloadSize = LENGTH_FIELD_LENGTH + XOR_FIELD_LENGTH + SUM_FIELD_LENGTH;
-        if (buffer.length < SOYAL_PROTOCOL_SHORT.length + minPayloadSize) {
+        const head = HEADERS.find(header => header.every((byte, i) => buffer[i] === byte));
+        if (!head || buffer.length < head.length + minPayloadSize) {
             throw new PacketFormatError("not a valid Soyal packet");
-        }
-
-        let head: SoyalHeader;
-
-        switch (buffer[0]) {
-            case SOYAL_PROTOCOL_SHORT[0]:
-                head = SOYAL_PROTOCOL_SHORT;
-                break;
-            case SOYAL_PROTOCOL_SECURITY_SHORT[0]:
-                head = SOYAL_PROTOCOL_SECURITY_SHORT;
-                break;
-            default: {
-                if (buffer.length < SOYAL_PROTOCOL_LARGE.length + minPayloadSize) {
-                    throw new PacketFormatError("not a valid Soyal packet");
-                }
-
-                if (buffer[0] == SOYAL_PROTOCOL_LARGE[0] && buffer[1] == SOYAL_PROTOCOL_LARGE[1] &&
-                    buffer[2] == SOYAL_PROTOCOL_LARGE[2] && buffer[3] == SOYAL_PROTOCOL_LARGE[3]) {
-                    head = SOYAL_PROTOCOL_LARGE;
-                } else if (buffer[0] == SOYAL_PROTOCOL_SECURITY_LARGE[0] && buffer[1] == SOYAL_PROTOCOL_SECURITY_LARGE[1] &&
-                    buffer[2] == SOYAL_PROTOCOL_SECURITY_LARGE[2] && buffer[3] == SOYAL_PROTOCOL_SECURITY_LARGE[3]) {
-                    head = SOYAL_PROTOCOL_SECURITY_LARGE;
-                } else {
-                    throw new PacketFormatError("not a valid Soyal packet");
-                }
-            }
         }
 
         buffer = buffer.subarray(head.length);
