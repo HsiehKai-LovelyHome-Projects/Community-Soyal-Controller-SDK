@@ -14,6 +14,22 @@ import {SetCardContentCommand83H} from "./SetCardContentCommand83H";
 import {WriteRTCCommand23H} from "./WriteRTCCommand23H";
 import {ReadRTCCommand24H} from "./ReadRTCCommand24H";
 import {RemoveAllEntryCards85H} from "./RemoveAllEntryCards85H";
+import {PromptKeyingInPassword09H} from "./PromptKeyingInPassword09H";
+import {SetLcdTextCommand27H} from "./SetLcdTextCommand27H";
+import {SetTimeZoneCommand2AH} from "./SetTimeZoneCommand2AH";
+import {SetHolidaysCommand2CH} from "./SetHolidaysCommand2CH";
+import {PassThroughCommand30H} from "./PassThroughCommand30H";
+import {MifareComplexCommand31H} from "./MifareComplexCommand31H";
+import {SetNodeIDCommand80H} from "./SetNodeIDCommand80H";
+import {ResetDeviceCommand81H} from "./ResetDeviceCommand81H";
+import {SetDutyCodeCommand82H} from "./SetDutyCodeCommand82H";
+import {StopWaitingForResponseCommand84H} from "./StopWaitingForResponseCommand84H";
+import {ResetAntiPassBackCommand86H} from "./ResetAntiPassBackCommand86H";
+import {GetCardContentCommand87H} from "./GetCardContentCommand87H";
+import {SetExtendParametersCommand88H} from "./SetExtendParametersCommand88H";
+import {InsertTagByUIDCommand89H} from "./InsertTagByUIDCommand89H";
+import {DeleteTagByUIDCommand8AH} from "./DeleteTagByUIDCommand8AH";
+import {LockIndicatorCommand90H} from "./LockIndicatorCommand90H";
 
 type CommandPayloadDeserializer = (buffer: Uint8Array) => DeserializeResult<ISoyalCommandPayload>;
 
@@ -35,6 +51,22 @@ export class SoyalCommandDeserializer {
         [SoyalCommandCode.REMOVE_OLDEST_DEVICE_EVENT_LOG_37H, RemoveOldestDeviceEventLogCommand37H.deserialize],
         [SoyalCommandCode.SET_CARD_CONTENT_83H, SetCardContentCommand83H.deserialize],
         [SoyalCommandCode.CLEARING_ALL_CARD_85H, RemoveAllEntryCards85H.deserialize],
+        [SoyalCommandCode.PROMPT_KEYING_IN_PASSWORD_09H, PromptKeyingInPassword09H.deserialize],
+        [SoyalCommandCode.SET_LCD_TEXT_27H, SetLcdTextCommand27H.deserialize],
+        [SoyalCommandCode.SET_TIME_ZONE_2AH, SetTimeZoneCommand2AH.deserialize],
+        [SoyalCommandCode.SET_HOLIDAYS_2CH, SetHolidaysCommand2CH.deserialize],
+        [SoyalCommandCode.PASS_THROUGH_30H, PassThroughCommand30H.deserialize],
+        [SoyalCommandCode.MIFARE_COMPLEX_31H, MifareComplexCommand31H.deserialize],
+        [SoyalCommandCode.SET_NODE_ID_80H, SetNodeIDCommand80H.deserialize],
+        [SoyalCommandCode.RESET_DEVICE_81H, ResetDeviceCommand81H.deserialize],
+        [SoyalCommandCode.SET_DUTY_CODE_82H, SetDutyCodeCommand82H.deserialize],
+        [SoyalCommandCode.STOP_WAITING_FOR_RESPONSE_84H, StopWaitingForResponseCommand84H.deserialize],
+        [SoyalCommandCode.RESET_ANTI_PASS_BACK_86H, ResetAntiPassBackCommand86H.deserialize],
+        [SoyalCommandCode.GET_CARD_CONTENT_87H, GetCardContentCommand87H.deserialize],
+        [SoyalCommandCode.SET_EXTEND_PARAMETERS_88H, SetExtendParametersCommand88H.deserialize],
+        [SoyalCommandCode.INSERT_TAG_BY_UID_89H, InsertTagByUIDCommand89H.deserialize],
+        [SoyalCommandCode.DELETE_TAG_BY_UID_8AH, DeleteTagByUIDCommand8AH.deserialize],
+        [SoyalCommandCode.LOCK_INDICATOR_90H, LockIndicatorCommand90H.deserialize],
     ]);
 
     public static register(commandCode: number, deserializer: CommandPayloadDeserializer) {

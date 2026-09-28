@@ -7,6 +7,7 @@ import {DeviceEchoResponse04H} from "./DeviceEchoResponse04H";
 import {DeviceEchoResponse03H} from "./DeviceEchoResponse03H";
 
 export enum SoyalFunctionCode {
+    DEVICE_MESSAGE = 0x02, // 2.6 lists it for the 12H reply, handled as an echo
     DEVICE_ECHO_RESPONSE = 0x03,
     DEVICE_ECHO_RESPONSE_ACK = 0x04,
     DEVICE_ECHO_RESPONSE_NACK = 0x05,
@@ -59,6 +60,7 @@ export class SoyalResponse implements ISoyalResponse {
 
         const functionCode = buffer[0];
         switch (functionCode) {
+            case SoyalFunctionCode.DEVICE_MESSAGE:
             case SoyalFunctionCode.DEVICE_ECHO_RESPONSE:
                 return SoyalResponse.deserializeWithDeserializer(buffer, DeviceEchoResponse03H.deserialize);
 

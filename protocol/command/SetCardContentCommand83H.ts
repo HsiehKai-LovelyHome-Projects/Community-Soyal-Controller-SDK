@@ -46,7 +46,7 @@ export class SetCardContentCommand83H implements ISoyalCommandPayload {
         if (mode < AccessControlMode.MIN || mode > AccessControlMode.MAX) {
             throw new PacketFormatError("data is out of range");
         }
-        if (timezoneID > 11 || timezoneID < 0) {
+        if (timezoneID > 63 || timezoneID < 0) { // 11 zones on 1024 users firmware, 64 on 3072 users firmware
             throw new PacketFormatError("data is out of range");
         }
         if (doorGroup && doorGroup > MAX_UINT8) {

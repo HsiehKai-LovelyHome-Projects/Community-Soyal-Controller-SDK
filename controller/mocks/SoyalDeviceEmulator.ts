@@ -36,7 +36,7 @@ export enum EmulatorEventCode {
     ANTI_PASS_BACK_ERROR = 0x1E,
 }
 
-export type HostDecision = "ACCEPTED" | "DENIED" | "RELEASED";
+export type HostDecision = "ACCEPTED" | "DENIED" | "RELEASED" | "PIN_REQUESTED";
 
 export interface EmulatedUser {
     cardUID: number; // site (bit 31~16) + card (bit 15~0)
@@ -79,6 +79,16 @@ export class SoyalDeviceEmulator {
     // ----- device state -----
     public readonly eeprom: Uint8Array;
     public readonly users = new Map<number, EmulatedUser>();
+    /** raw 30 bytes zone structures by index (2AH) */
+    public readonly timeZones = new Map<number, Uint8Array>();
+    /** [month, day] pairs by index (2CH) */
+    public readonly holidays = new Map<number, [number, number]>();
+    /** 4 x 16 characters (27H) */
+    public lcd = " ".repeat(64);
+    public readonly passThroughData: Uint8Array[] = [];
+    public dutyCode = 0;
+    public cardInterval10ms = 0;
+    public antiPassBackResetCount = 0;
     public readonly eventLogs: Uint8Array[] = []; // oldest first, each is [event code, reader ID, 24 bytes]
     public readonly firmwareVersion: number;
     public readonly readerType: number;
@@ -245,6 +255,9 @@ export class SoyalDeviceEmulator {
             case 0x05: // prompt invalid, no response
                 this.resolveHostDecision("DENIED");
                 return undefined;
+            case 0x09: // prompt keying in password, no response
+                this.resolveHostDecision("PIN_REQUESTED");
+                return undefined;
             case 0x12:
                 return this.readEEPROM(data);
             case 0x18:
@@ -259,9 +272,23 @@ export class SoyalDeviceEmulator {
                 return this.readRTC();
             case 0x25:
                 return this.getOldestEventLog();
+            case 0x27:
+                return this.setLcdText(data);
+            case 0x2A:
+                return this.setTimeZones(data);
+            case 0x2C:
+                return this.setHolidays(data);
             case 0x2D:
                 this.eventLogs.length = 0;
                 return this.ack();
+            case 0x30:
+                if (data.length < 1 || data[0] > 10 || data.length < 1 + data[0]) {
+                    return this.nack();
+                }
+                this.passThroughData.push(data.slice(1, 1 + data[0]));
+                return this.ack();
+            case 0x31:
+                return [0x07, this.nodeID]; // NOTAG: no Mifare card in the field
             case 0x37:
                 this.eventLogs.shift();
                 return this.ack();
@@ -270,7 +297,11 @@ export class SoyalDeviceEmulator {
             case 0x81:
                 return this.resetDevice(data);
             case 0x82: // duty code
-                return data.length >= 1 ? this.ack() : this.nack();
+                if (data.length < 1 || data[0] > 7) {
+                    return this.nack();
+                }
+                this.dutyCode = data[0];
+                return this.ack();
             case 0x83:
                 return this.setUser(data);
             case 0x84: // 2.21 calls it unresponsive but lists an ACK echo; the ACK is emulated
@@ -281,14 +312,53 @@ export class SoyalDeviceEmulator {
                 this.users.clear();
                 return this.ack();
             case 0x86: // reset anti-pass-back
+                this.antiPassBackResetCount++;
                 return this.ack();
             case 0x87:
                 return this.getUsers(data);
             case 0x88:
                 return this.setExtendParameter(data);
-            default:
+            case 0x90: // lock indicators (727H)
+                return data.length >= 3 ? this.ack() : this.nack();
+            default: // including 89H / 8AH, 721Q only
                 return this.nack();
         }
+    }
+
+    private setLcdText(data: Uint8Array): number[] {
+        // 2.10: [position] [length] [ASCII...] ([delay H] [delay L] [beeps])
+        if (data.length < 2 || data.length < 2 + data[1] || data[0] + data[1] > 64) {
+            return this.nack();
+        }
+
+        const text = String.fromCharCode(...data.subarray(2, 2 + data[1]));
+        this.lcd = this.lcd.substring(0, data[0]) + text + this.lcd.substring(data[0] + text.length);
+        return this.ack();
+    }
+
+    private setTimeZones(data: Uint8Array): number[] {
+        // 2.24: [index] [sets] 30 bytes per zone
+        const zoneLength = 30;
+        if (data.length < 2 || data.length !== 2 + data[1] * zoneLength) {
+            return this.nack();
+        }
+
+        for (let i = 0; i < data[1]; i++) {
+            this.timeZones.set(data[0] + i, data.slice(2 + i * zoneLength, 2 + (i + 1) * zoneLength));
+        }
+        return this.ack();
+    }
+
+    private setHolidays(data: Uint8Array): number[] {
+        // 2.25: [index] [sets] [month] [day]...
+        if (data.length < 2 || data.length !== 2 + data[1] * 2 || data[0] + data[1] > 120) {
+            return this.nack();
+        }
+
+        for (let i = 0; i < data[1]; i++) {
+            this.holidays.set(data[0] + i, [data[2 + i * 2], data[3 + i * 2]]);
+        }
+        return this.ack();
     }
 
     private ack(): number[] {
@@ -388,6 +458,12 @@ export class SoyalDeviceEmulator {
                 break;
             case 0x01:
                 this.keypadLocked = data[1] === 1;
+                break;
+            case 0x02:
+                if (data.length < 3) {
+                    return this.nack();
+                }
+                this.cardInterval10ms = (data[1] << 8) + data[2];
                 break;
             case 0x80:
                 this.armed = true;
