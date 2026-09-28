@@ -1,6 +1,7 @@
 import {DeserializeResult} from "../Serializable";
 import {ISoyalResponsePayload} from "./SoyalResponse";
 import {checkUnsignedField, MAX_UINT8} from "../Commons";
+import {DeviceIOStatus} from "./DeviceIOStatus";
 
 /**
  * ACK. The reader ID is part of the enclosing {@link SoyalResponse}, what follows is optional:
@@ -38,6 +39,11 @@ export class DeviceEchoResponse04H implements ISoyalResponsePayload {
 
     public get isExtended(): boolean {
         return this.readerType !== undefined;
+    }
+
+    /** H series layout of the extended form */
+    public get ioStatus(): DeviceIOStatus | undefined {
+        return this.ioStatus0 === undefined ? undefined : new DeviceIOStatus(this.ioStatus0, this.ioStatus1 ?? 0);
     }
 
     public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceEchoResponse04H> {

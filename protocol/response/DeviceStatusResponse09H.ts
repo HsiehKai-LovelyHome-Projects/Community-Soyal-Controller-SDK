@@ -1,5 +1,5 @@
 import {DeserializeResult, Serializable} from "../Serializable";
-import {PacketFormatError, UnknownProtocol} from "../Errors";
+import {PacketFormatError} from "../Errors";
 import {ISoyalResponsePayload} from "./SoyalResponse";
 import {DeviceStatusIOStatus00H} from "./device_status_event/DeviceStatusIOStatus00H";
 import {DeviceIOEventKeyPadPressed01H} from "./device_status_event/DeviceStatusKeyPadPressed01H";
@@ -64,8 +64,11 @@ export class DeviceStatusResponse09H implements ISoyalResponsePayload {
                 bufferConsumed += result.bufferConsumed;
                 break;
             }
-            default:
-                throw new UnknownProtocol(`Unknown event type: ${eventType}`);
+            default: {
+                // e.g. 03H (card + PIN input, 2.4 examples) or 06H (727H keyboard buffer), kept raw
+                event = new DeviceStatusUnknown(data.slice());
+                bufferConsumed += data.length;
+            }
         }
 
         return {
@@ -81,6 +84,20 @@ export class DeviceStatusResponse09H implements ISoyalResponsePayload {
 }
 
 export interface IDeviceStatusEventPayload extends Serializable {
+}
+
+/** a status event without a dedicated decoder */
+export class DeviceStatusUnknown implements IDeviceStatusEventPayload {
+    public constructor(public readonly data: Uint8Array) {
+    }
+
+    public serialize(): Uint8Array {
+        return Uint8Array.from(this.data);
+    }
+
+    public toJSON() {
+        return {data: Buffer.from(this.data).toString("hex")};
+    }
 }
 
 

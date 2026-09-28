@@ -1,90 +1,84 @@
 import {DeserializeResult, Serializable} from "../Serializable";
-import {DeviceEventInvalidCard03H} from "./DeviceEventInvalidCard03H";
-import {DeviceEventNormalAccess0BH} from "./DeviceEventNormalAccess0BH";
-import {MAX_UINT8} from "../Commons";
-import {PacketFormatError, PacketValueError} from "../Errors";
-import {DeviceEventWrongPin01H} from "./DeviceEventWrongPin01H";
-import {DeviceEventAccessByPin1CH} from "./DeviceEventAccessByPin1CH";
+import {checkBufferLength, checkUnsignedField, MAX_UINT8} from "../Commons";
+import {PacketFormatError} from "../Errors";
 import {IDeviceEventLogPayload, LogEntryEventType} from "./DeviceEventTypes";
+import {DeviceEventLogEntry} from "./DeviceEventLogEntry";
+import {DeviceEventWrongPin01H} from "./DeviceEventWrongPin01H";
+import {DeviceEventInvalidCard03H} from "./DeviceEventInvalidCard03H";
+import {DeviceEventTimeZoneError04H} from "./DeviceEventTimeZoneError04H";
+import {DeviceEventNormalAccess0BH} from "./DeviceEventNormalAccess0BH";
+import {DeviceEventEgress10H} from "./DeviceEventEgress10H";
+import {DeviceEventAlarm11H} from "./DeviceEventAlarm11H";
+import {DeviceEventAccessByPin1CH} from "./DeviceEventAccessByPin1CH";
+import {DeviceEventAntiPassBackError1EH} from "./DeviceEventAntiPassBackError1EH";
 
 export {IDeviceEventLogPayload, LogEntryEventType};
 
 export interface IDeviceEvent extends Serializable {
 }
 
-export class SoyalDeviceEvent implements IDeviceEvent {
-    // data fields
-    public readonly eventType: LogEntryEventType;
-    public readonly readerID: number;
-    public readonly logEntry: IDeviceEventLogPayload;
+type EventLogDeserializer = (buffer: Uint8Array) => DeserializeResult<DeviceEventLogEntry>;
 
-    public constructor(eventType: LogEntryEventType, readerID: number, logPayload: IDeviceEventLogPayload) {
-        if (eventType > MAX_UINT8 || readerID > MAX_UINT8) {
-            throw new PacketFormatError("data is out of range");
-        }
+/**
+ * An event log entry: [event code] [reader ID] [24 bytes body], 26 bytes in total (2.11).
+ */
+export class SoyalDeviceEvent implements IDeviceEvent {
+    public static readonly LENGTH = 2 + DeviceEventLogEntry.LENGTH;
+
+    private static readonly deserializers = new Map<number, EventLogDeserializer>([
+        [LogEntryEventType.PIN_ERROR, DeviceEventWrongPin01H.deserialize],
+        [LogEntryEventType.INVALID_CARD, DeviceEventInvalidCard03H.deserialize],
+        [LogEntryEventType.TIME_ZONE_ERROR, DeviceEventTimeZoneError04H.deserialize],
+        [LogEntryEventType.NORMAL_ACCESS, DeviceEventNormalAccess0BH.deserialize],
+        [LogEntryEventType.EGRESS, DeviceEventEgress10H.deserialize],
+        [LogEntryEventType.ALARM_EVENT, DeviceEventAlarm11H.deserialize],
+        [LogEntryEventType.ACCESS_BY_PIN, DeviceEventAccessByPin1CH.deserialize],
+        [LogEntryEventType.ANTI_PASS_BACK_ERROR, DeviceEventAntiPassBackError1EH.deserialize],
+    ]);
+
+    // data fields
+    public readonly eventType: LogEntryEventType | number;
+    public readonly readerID: number;
+    public readonly logEntry: DeviceEventLogEntry;
+
+    public constructor(eventType: LogEntryEventType | number, readerID: number, logPayload: DeviceEventLogEntry) {
+        checkUnsignedField(eventType, MAX_UINT8);
+        checkUnsignedField(readerID, MAX_UINT8);
 
         this.eventType = eventType;
         this.readerID = readerID;
         this.logEntry = logPayload;
     }
 
+    /** false for event codes without a dedicated class, the entry is then a plain {@link DeviceEventLogEntry} */
+    public get isKnownEventType(): boolean {
+        return SoyalDeviceEvent.deserializers.has(this.eventType);
+    }
+
     public static deserialize(buffer: Uint8Array): DeserializeResult<SoyalDeviceEvent> {
-        if (buffer.length < 2) {
-            throw new PacketFormatError("buffer length is too short");
+        checkBufferLength(buffer, SoyalDeviceEvent.LENGTH);
+        if (buffer.length !== SoyalDeviceEvent.LENGTH) {
+            throw new PacketFormatError(`an event log entry is ${SoyalDeviceEvent.LENGTH} bytes, got ${buffer.length}`);
         }
 
         const eventType = buffer[0];
         const readerID = buffer[1];
+        const body = buffer.subarray(2);
 
-        buffer = buffer.subarray(2, buffer.length);
-        let payload: IDeviceEventLogPayload;
-        let bufferConsumed: number = 2;
-
-        switch (eventType) {
-            case LogEntryEventType.PIN_ERROR: {
-                const result = DeviceEventWrongPin01H.deserialize(buffer);
-
-                payload = result.instance;
-                bufferConsumed = result.bufferConsumed;
-                break;
-            }
-            case LogEntryEventType.INVALID_CARD: {
-                const result = DeviceEventInvalidCard03H.deserialize(buffer);
-
-                payload = result.instance;
-                bufferConsumed = result.bufferConsumed;
-                break;
-            }
-            case LogEntryEventType.NORMAL_ACCESS: {
-                const result = DeviceEventNormalAccess0BH.deserialize(buffer);
-
-                payload = result.instance;
-                bufferConsumed = result.bufferConsumed;
-                break;
-            }
-            case LogEntryEventType.ACCESS_BY_PIN: {
-                const result = DeviceEventAccessByPin1CH.deserialize(buffer);
-
-                payload = result.instance;
-                bufferConsumed = result.bufferConsumed;
-                break;
-            }
-
-            default:
-                throw new PacketValueError(`unknown event log type ${eventType}`);
-        }
-
-        if (bufferConsumed !== buffer.length) {
-            throw new PacketFormatError(`deserialization not consumed all data: ${bufferConsumed} / ${buffer.length}`);
-        }
+        const deserializer = SoyalDeviceEvent.deserializers.get(eventType);
+        const result = deserializer ? deserializer(body) : DeviceEventLogEntry.deserializeAs(eventType, body);
 
         return {
-            instance: new SoyalDeviceEvent(eventType, readerID, payload),
-            bufferConsumed: 2 /*eventType and readerID*/ + bufferConsumed,
+            instance: new SoyalDeviceEvent(eventType, readerID, result.instance),
+            bufferConsumed: 2 + result.bufferConsumed,
         };
     }
 
     public serialize(): Uint8Array {
         return Uint8Array.from([this.eventType, this.readerID, ...this.logEntry.serialize()]);
+    }
+
+    public toJSON() {
+        return {...this.logEntry.toJSON(), reportedByReaderID: this.readerID};
     }
 }

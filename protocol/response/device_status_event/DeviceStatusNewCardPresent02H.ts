@@ -9,6 +9,7 @@ import {
 import {PacketFormatError} from "../../Errors";
 import {DeserializeResult} from "../../Serializable";
 import {IDeviceStatusEventPayload} from "../DeviceStatusResponse09H";
+import {DeviceParameters, DutyStatus, dutyStatusOf} from "../DeviceIOStatus";
 
 export class DeviceStatusNewCardPresent02H implements IDeviceStatusEventPayload {
     // data fields
@@ -72,6 +73,30 @@ export class DeviceStatusNewCardPresent02H implements IDeviceStatusEventPayload 
         this.tagType = tagType;
         this.flag = flag;
         this.data = data;
+    }
+
+    /** time & attendance status selected before the card was presented (data 0 bit 7~5) */
+    public get dutyStatus(): DutyStatus {
+        return dutyStatusOf(this.dutyCode);
+    }
+
+    public get parameters(): DeviceParameters {
+        return new DeviceParameters(this.deviceParameters);
+    }
+
+    /** the card was presented on the external (Wiegand) reader */
+    public get fromExternalReader(): boolean {
+        return (this.userStatus & 0x80) !== 0;
+    }
+
+    /** the duress code was keyed in */
+    public get duress(): boolean {
+        return (this.userStatus & 0x40) !== 0;
+    }
+
+    /** the value keyed in before presenting the card, or the previous one (data 3~4) */
+    public get keyedValue(): number {
+        return this.value;
     }
 
     public static deserialize(buffer: Uint8Array): DeserializeResult<DeviceStatusNewCardPresent02H> {

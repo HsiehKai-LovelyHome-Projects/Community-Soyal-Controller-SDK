@@ -3,6 +3,7 @@ import {checkBufferLength, MAX_UINT8} from "../Commons";
 import {PacketFormatError} from "../Errors";
 import {DeserializeResult} from "../Serializable";
 import {DeviceEchoResponse03H} from "./DeviceEchoResponse03H";
+import {DeviceIOStatus, DeviceParameters} from "./DeviceIOStatus";
 
 export class DoorStatusResponse implements ISoyalResponsePayload {
     public readonly version: number;
@@ -28,6 +29,14 @@ export class DoorStatusResponse implements ISoyalResponsePayload {
         this.doorStatus = doorStatus;
         this.forcedOpenAlarmStatus = forcedOpenAlarmStatus;
         this.bitSelection = bitSelection;
+    }
+
+    public get ioStatus(): DeviceIOStatus {
+        return new DeviceIOStatus(this.doorStatus, this.forcedOpenAlarmStatus);
+    }
+
+    public get deviceParameters(): DeviceParameters {
+        return new DeviceParameters(this.bitSelection);
     }
 
     public static deserialize(response: DeviceEchoResponse03H): DeserializeResult<DoorStatusResponse> {
