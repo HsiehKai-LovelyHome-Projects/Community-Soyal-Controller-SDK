@@ -1,6 +1,6 @@
 import {DeviceEventInvalidCard03H} from "./DeviceEventInvalidCard03H";
 import {DeserializeResult} from "../Serializable";
-import {LogEntryEventType} from "./SoyalDeviceEvent";
+import {LogEntryEventType} from "./DeviceEventTypes";
 
 export class DeviceEventNormalAccess0BH extends DeviceEventInvalidCard03H {
 

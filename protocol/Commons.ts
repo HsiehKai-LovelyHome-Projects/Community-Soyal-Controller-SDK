@@ -16,6 +16,15 @@ export function composeUInt16MSBLSB(msb: number, lsb: number): number {
     return (msb << 8) + lsb;
 }
 
+/**
+ * [ID code (bit 39~32)] [site code (bit 31~16)] [card code (bit 15~0)] -> 40 bits card UID
+ *
+ * Arithmetic instead of bitwise operations: `site << 16` overflows into the sign bit when site >= 0x8000.
+ */
+export function composeCardUID(siteCode: number, cardCode: number, idCode: number = 0): number {
+    return idCode * 2 ** 32 + siteCode * 2 ** 16 + cardCode;
+}
+
 
 function getBytesFromUIntLE(value: number, valueLength: number): Array<number> {
     if (valueLength > 4) {

@@ -1,5 +1,5 @@
 import {DeserializeResult} from "../Serializable";
-import {LogEntryEventType} from "./SoyalDeviceEvent";
+import {LogEntryEventType} from "./DeviceEventTypes";
 import {DeviceEventWrongPin01H} from "./DeviceEventWrongPin01H";
 
 export class DeviceEventAccessByPin1CH extends DeviceEventWrongPin01H {

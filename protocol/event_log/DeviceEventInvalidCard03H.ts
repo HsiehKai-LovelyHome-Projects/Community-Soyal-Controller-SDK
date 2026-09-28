@@ -1,4 +1,5 @@
 import {
+    composeCardUID,
     composeUInt16MSBLSB,
     getBytesFromUInt16BE, getBytesFromUInt32BE, MAX_CARD_UID,
     MAX_UINT16, MAX_UINT32,
@@ -8,7 +9,7 @@ import {
 } from "../Commons";
 import {PacketFormatError, PacketValueError} from "../Errors";
 import {DeserializeResult} from "../Serializable";
-import {IDeviceEventLogPayload, LogEntryEventType} from "./SoyalDeviceEvent";
+import {IDeviceEventLogPayload, LogEntryEventType} from "./DeviceEventTypes";
 
 export class DeviceEventInvalidCard03H implements IDeviceEventLogPayload {
     // data fields
@@ -91,7 +92,7 @@ export class DeviceEventInvalidCard03H implements IDeviceEventLogPayload {
         const timestamp = timestampFromSoyalFormat(buffer);
         const site = composeUInt16MSBLSB(buffer[14], buffer[15]);
         const cardID = composeUInt16MSBLSB(buffer[18], buffer[19]);
-        const cardUID = (site << 16) + cardID;
+        const cardUID = composeCardUID(site, cardID);
         return {
             instance: new DeviceEventInvalidCard03H(timestamp, composeUInt16MSBLSB(buffer[8], buffer[9]),
                 buffer[10], buffer[11], buffer[12], buffer[13],

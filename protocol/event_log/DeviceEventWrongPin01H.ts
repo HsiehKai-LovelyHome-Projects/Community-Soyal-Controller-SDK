@@ -8,7 +8,7 @@ import {
 } from "../Commons";
 import {PacketFormatError, PacketValueError} from "../Errors";
 import {DeserializeResult} from "../Serializable";
-import {IDeviceEventLogPayload, LogEntryEventType} from "./SoyalDeviceEvent";
+import {IDeviceEventLogPayload, LogEntryEventType} from "./DeviceEventTypes";
 import {DeviceStatusType} from "../response/DeviceStatusResponse09H";
 
 export class DeviceEventWrongPin01H implements IDeviceEventLogPayload {

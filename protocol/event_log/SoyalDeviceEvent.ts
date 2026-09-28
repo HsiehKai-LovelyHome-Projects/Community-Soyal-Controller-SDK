@@ -5,21 +5,9 @@ import {MAX_UINT8} from "../Commons";
 import {PacketFormatError, PacketValueError} from "../Errors";
 import {DeviceEventWrongPin01H} from "./DeviceEventWrongPin01H";
 import {DeviceEventAccessByPin1CH} from "./DeviceEventAccessByPin1CH";
+import {IDeviceEventLogPayload, LogEntryEventType} from "./DeviceEventTypes";
 
-// noinspection JSUnusedGlobalSymbols
-// refer to Protocol_881E_725Ev2_82xEv5+4V04.pdf::4.2 Function code define table for more detailed
-export enum LogEntryEventType {
-    PIN_ERROR = 0x01,
-    INVALID_CARD = 0x03,
-
-    TIME_ZONE_ERROR = 0x04,
-
-    NORMAL_ACCESS = 0x0B,
-    EGRESS = 0x10,
-    ALARM_EVENT = 0x11,
-    ACCESS_BY_PIN = 0x1c,
-    ANTI_PASS_BACK_ERROR = 0x1E,
-}
+export {IDeviceEventLogPayload, LogEntryEventType};
 
 export interface IDeviceEvent extends Serializable {
 }
@@ -99,8 +87,4 @@ export class SoyalDeviceEvent implements IDeviceEvent {
     public serialize(): Uint8Array {
         return Uint8Array.from([this.eventType, this.readerID, ...this.logEntry.serialize()]);
     }
-}
-
-export interface IDeviceEventLogPayload extends Serializable {
-    get eventType(): number
 }

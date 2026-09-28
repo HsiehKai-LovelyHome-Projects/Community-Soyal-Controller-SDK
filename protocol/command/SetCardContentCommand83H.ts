@@ -1,5 +1,6 @@
 import {ISoyalCommandPayload} from "./SoyalCommand";
 import {
+    composeCardUID,
     composeUInt16MSBLSB,
     getBytesFromUInt16BE,
     getBytesFromUInt32BE,
@@ -76,7 +77,7 @@ export class SetCardContentCommand83H implements ISoyalCommandPayload {
         const cardID = composeUInt16MSBLSB(buffer[4], buffer[5]);
         bufferConsumed += 2;
 
-        const cardUID = siteID << 16 + cardID;
+        const cardUID = composeCardUID(siteID, cardID);
         const offlinePin = composeUInt16MSBLSB(buffer[6], buffer[7]);
         bufferConsumed += 2;
 
@@ -89,7 +90,7 @@ export class SetCardContentCommand83H implements ISoyalCommandPayload {
 
         let doorGroup: number | undefined;
         if (buffer.length > 10) {
-            doorGroup = buffer[11];
+            doorGroup = buffer[10];
             bufferConsumed += 1;
         }
 

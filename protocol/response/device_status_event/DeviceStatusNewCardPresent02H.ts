@@ -1,4 +1,5 @@
 import {
+    composeCardUID,
     composeUInt16MSBLSB,
     getBytesFromUInt16BE, getBytesFromUInt40BE,
     MAX_CARD_UID,
@@ -80,7 +81,7 @@ export class DeviceStatusNewCardPresent02H implements IDeviceStatusEventPayload 
 
         const site = composeUInt16MSBLSB(buffer[1], buffer[2]);
         const cardID = composeUInt16MSBLSB(buffer[5], buffer[6]);
-        const cardUID = (buffer[7] * 2 ** 32) + (site << 16) + cardID;
+        const cardUID = composeCardUID(site, cardID, buffer[7]);
 
         const value = composeUInt16MSBLSB(buffer[3], buffer[4]);
 
