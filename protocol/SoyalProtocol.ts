@@ -10,7 +10,7 @@ export class SoyalHeader extends Uint8Array {
     }
 }
 
-export const SOYAL_PROTOCOL_SHORT = new Uint8Array([0x7E]);
+export const SOYAL_PROTOCOL_SHORT = new SoyalHeader([0x7E]);
 export const SOYAL_PROTOCOL_SECURITY_SHORT = new SoyalHeader([0x7F]);
 export const SOYAL_PROTOCOL_LARGE = new SoyalHeader([0xFF, 0x00, 0x5A, 0xA5]);
 export const SOYAL_PROTOCOL_SECURITY_LARGE = new SoyalHeader([0xFF, 0x00, 0x55, 0xAA]);
@@ -57,7 +57,7 @@ export class SoyalProtocol implements Serializable {
             throw new PacketFormatError("not a valid Soyal packet");
         }
 
-        let head: Uint8Array;
+        let head: SoyalHeader;
 
         switch (buffer[0]) {
             case SOYAL_PROTOCOL_SHORT[0]:
