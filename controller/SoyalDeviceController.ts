@@ -61,6 +61,7 @@ export class SoyalDeviceController {
     public static readonly FLUSH_LENGTH = 1 /* length byte */ + 255 + 1;
 
     private static readonly HOST_ID = 0x00;
+    private static readonly DEFAULT_DRAIN_TIMEOUT_MS = 5000;
 
     private readonly serialOptions: SerialPortOpenOptions<any>;
     private readonly requestTimeoutMs: number;
@@ -76,6 +77,8 @@ export class SoyalDeviceController {
         [TransactionPriority.LOW]: [],
     };
     private pumping = false;
+    private closing = false;
+    private idleWaiters: (() => void)[] = [];
 
     private frameWaiter: ((frame: Uint8Array) => void) | null = null;
     private unsolicitedFrames: Uint8Array[] = [];
@@ -136,21 +139,58 @@ export class SoyalDeviceController {
         }
     }
 
-    public async close(): Promise<void> {
+    /**
+     * Close the port once the transaction on the wire and the ones already queued have completed, so a started
+     * sequence is not cut in the middle. New transactions are refused from now on. Transactions still queued after
+     * `drainTimeoutMs` are rejected.
+     */
+    public async close(options: { drainTimeoutMs?: number } = {}): Promise<void> {
         const port = this.port;
-        if (port === null) {
+        if (port === null || this.closing) {
             return;
         }
 
-        this.port = null;
-        for (const queue of Object.values(this.queues)) {
-            for (const transaction of queue.splice(0)) {
-                transaction.reject(new Error("controller closed"));
+        this.closing = true;
+        try {
+            if (!await this.waitIdle(options.drainTimeoutMs ?? SoyalDeviceController.DEFAULT_DRAIN_TIMEOUT_MS)) {
+                console.warn("[SOYAL_CONTROLLER] Closing with transactions still pending");
             }
+
+            this.port = null;
+            for (const queue of Object.values(this.queues)) {
+                for (const transaction of queue.splice(0)) {
+                    transaction.reject(new Error("controller closed"));
+                }
+            }
+
+            await new Promise<void>((resolve, reject) => {
+                port.close(err => err ? reject(err) : resolve());
+            });
+        } finally {
+            this.closing = false;
+        }
+    }
+
+    private get idle(): boolean {
+        return !this.pumping && Object.values(this.queues).every(queue => queue.length === 0);
+    }
+
+    /** resolves true once no transaction is running nor queued, false on timeout */
+    private waitIdle(timeoutMs: number): Promise<boolean> {
+        if (this.idle) {
+            return Promise.resolve(true);
         }
 
-        await new Promise<void>((resolve, reject) => {
-            port.close(err => err ? reject(err) : resolve());
+        return new Promise(resolve => {
+            const timer = setTimeout(() => {
+                this.idleWaiters = this.idleWaiters.filter(waiter => waiter !== onIdle);
+                resolve(false);
+            }, timeoutMs);
+            const onIdle = () => {
+                clearTimeout(timer);
+                resolve(true);
+            };
+            this.idleWaiters.push(onIdle);
         });
     }
 
@@ -161,6 +201,9 @@ export class SoyalDeviceController {
     public transact(packet: Uint8Array, options: TransactionOptions = {}): Promise<Uint8Array | undefined> {
         if (this.port === null) {
             return Promise.reject(new Error("controller is not opened yet"));
+        }
+        if (this.closing) {
+            return Promise.reject(new Error("controller is closing"));
         }
 
         return new Promise((resolve, reject) => {
@@ -210,6 +253,9 @@ export class SoyalDeviceController {
             }
         } finally {
             this.pumping = false;
+            for (const waiter of this.idleWaiters.splice(0)) {
+                waiter();
+            }
         }
     }
 

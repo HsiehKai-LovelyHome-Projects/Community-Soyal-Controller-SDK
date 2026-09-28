@@ -129,3 +129,33 @@ test("transact_foreignReaderIsIgnored", async () => {
         {expectedReaderID: 2});
     expect(functionCodeOf(ack)).toBe(SoyalFunctionCode.DEVICE_ECHO_RESPONSE_ACK);
 });
+
+test("close_completesQueuedTransactionsFirst", async () => {
+    await controller.open();
+    const emulator = Ar721hMock.emulatorAt(path);
+
+    const on = controller.transact(packet(SoyalCommandCode.CONTROL_RELAY_21H, Uint8Array.of(0x82)));
+    const off = controller.transact(packet(SoyalCommandCode.CONTROL_RELAY_21H, Uint8Array.of(0x83)));
+    const closing = controller.close();
+
+    await expect(controller.transact(POLL)).rejects.toThrow("closing");
+    expect(functionCodeOf(await on)).toBe(SoyalFunctionCode.DEVICE_ECHO_RESPONSE);
+    expect(functionCodeOf(await off)).toBe(SoyalFunctionCode.DEVICE_ECHO_RESPONSE);
+    await closing;
+
+    expect(controller.isOpen).toBe(false);
+    expect(emulator.receivedCommands.map(command => Array.from(command.data))).toStrictEqual([[0x82], [0x83]]);
+    expect(emulator.doorRelayOn).toBe(false);
+});
+
+test("close_giveUpDrainingAfterTimeout", async () => {
+    await controller.open();
+    Ar721hMock.emulatorAt(path).unresponsive = true; // every transaction waits for its 200 ms timeout
+
+    const pending = [1, 2, 3].map(() => controller.transact(POLL).catch(err => err));
+    await controller.close({drainTimeoutMs: 250});
+
+    const results = await Promise.all(pending);
+    expect(results.some(result => result instanceof Error && result.message === "controller closed")).toBe(true);
+    expect(controller.isOpen).toBe(false);
+});
