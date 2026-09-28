@@ -75,7 +75,13 @@ export class Ar721hMock extends SerialPortMock {
         this.emitToHost(bytes);
     }
 
-    public write(buffer: Uint8Array): boolean {
+    public write(buffer: Uint8Array, encodingOrCallback?: unknown, callback?: unknown): boolean {
+        const done = typeof encodingOrCallback === "function" ? encodingOrCallback :
+            typeof callback === "function" ? callback : undefined;
+        if (done) {
+            process.nextTick(() => done(null));
+        }
+
         let bytes = Uint8Array.from(buffer);
 
         if (this.bytesUntilCableCut !== undefined) {
