@@ -27,7 +27,7 @@ beforeEach(async () => {
     Ar721hMock.reset();
     path = `/dev/mock-controller-${testIndex++}`;
     controller = new SoyalDeviceController(path, 1, SOYAL_PROTOCOL_SHORT,
-        {requestTimeoutMs: 200, interTransactionDelayMs: 0});
+        {requestTimeoutMs: 200, interTransactionDelayMs: 0, probeTimeoutMs: 100});
 });
 
 afterEach(async () => {
@@ -64,7 +64,7 @@ test("transact_concurrentRequestsAreSerialized", async () => {
     ]);
     // normal priority first, the low priority poll last
     expect(emulator.receivedCommands.map(command => command.command))
-        .toStrictEqual([0x21, 0x2D, 0x04, 0x18]);
+        .toStrictEqual([0x25 /* probe on open */, 0x21, 0x2D, 0x04, 0x18]);
 });
 
 test("transact_droppedResponse_nextRequestGetsItsOwnResponse", async () => {
@@ -91,13 +91,18 @@ test("transact_lateResponseIsNotTakenByNextRequest", async () => {
     expect(functionCodeOf(ack)).toBe(SoyalFunctionCode.DEVICE_ECHO_RESPONSE_ACK);
 });
 
-test("transact_cableCutMidFrame_recoversAfterFlush", async () => {
+test("transact_cableCutMidFrame_recoveredWhenReopened", async () => {
     await controller.open();
     const mock = Ar721hMock.instanceAt(path)!;
 
     mock.cutCableAfter(3);
     await expect(controller.transact(POLL)).rejects.toThrow(DeviceNoResponse);
-    expect(mock.emulator.receiverIdle).toBe(true); // released by the flush following the timeout
+    expect(mock.emulator.receiverIdle).toBe(false); // stuck: nothing is sent to recover while running
+
+    // what the application does after repeated timeouts: restart, i.e. reopen
+    await controller.close();
+    await controller.open(); // the 25H probe is swallowed by the stuck frame, the zero burst releases the reader
+    expect(mock.emulator.receiverIdle).toBe(true);
 
     expect(functionCodeOf(await controller.transact(POLL))).toBe(SoyalFunctionCode.DEVICE_STATUS_EVENT);
 });
@@ -144,7 +149,7 @@ test("close_completesQueuedTransactionsFirst", async () => {
     await closing;
 
     expect(controller.isOpen).toBe(false);
-    expect(emulator.receivedCommands.map(command => Array.from(command.data))).toStrictEqual([[0x82], [0x83]]);
+    expect(emulator.receivedCommands.map(command => Array.from(command.data))).toStrictEqual([[], [0x82], [0x83]]) // probe on open, then on and off;
     expect(emulator.doorRelayOn).toBe(false);
 });
 
@@ -158,4 +163,32 @@ test("close_giveUpDrainingAfterTimeout", async () => {
     const results = await Promise.all(pending);
     expect(results.some(result => result instanceof Error && result.message === "controller closed")).toBe(true);
     expect(controller.isOpen).toBe(false);
+});
+
+test("open_healthyReaderIsNotFlushed", async () => {
+    await controller.open();
+    const emulator = Ar721hMock.emulatorAt(path);
+
+    expect(emulator.receivedCommands.map(command => command.command)).toStrictEqual([0x25]); // the probe only
+    expect(emulator.bytesReceived).toBeLessThan(SoyalDeviceController.FLUSH_LENGTH);
+});
+
+test("timeout_sendsNothingElse", async () => {
+    await controller.open();
+    const emulator = Ar721hMock.emulatorAt(path);
+    const before = emulator.bytesReceived;
+    emulator.unresponsive = true;
+
+    await expect(controller.transact(POLL)).rejects.toThrow(DeviceNoResponse);
+
+    expect(emulator.bytesReceived - before).toBe(POLL.length); // neither probe nor zero burst
+});
+
+test("open_probeDoesNotConsumeACardPresented", async () => {
+    Ar721hMock.emulatorAt(path).presentCard(0x12345678);
+
+    await controller.open(); // probes with 25H
+
+    const status = SoyalProtocol.deserialize((await controller.transact(POLL))!).payload;
+    expect(status[2]).toBe(0x02); // the card present event is still reported to the status poll
 });

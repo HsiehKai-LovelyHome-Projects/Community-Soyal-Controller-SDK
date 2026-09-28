@@ -1,4 +1,6 @@
-import {SoyalHeader} from "../protocol/SoyalProtocol";
+import {SoyalHeader, SoyalProtocol} from "../protocol/SoyalProtocol";
+import {SoyalCommand, SoyalCommandCode} from "../protocol/command/SoyalCommand";
+import {GetOldestDeviceEventLogCommand25H} from "../protocol/command/GetOldestDeviceEventLogCommand25H";
 import {SerialPort, SerialPortOpenOptions} from "serialport";
 import {Ar721hMock} from "./mocks/Ar721hMock";
 import {SerialPortStream} from "@serialport/stream";
@@ -29,8 +31,14 @@ export interface SoyalDeviceControllerOptions {
     requestTimeoutMs?: number;
     /** idle time between two transactions, gives the device time to breathe */
     interTransactionDelayMs?: number;
-    /** send a zero burst after opening the port, to release a reader stuck in a half received frame */
-    flushOnOpen?: boolean;
+    /** check the reader answers when opening the port, releasing it with a zero burst if it does not, default true */
+    checkReaderOnOpen?: boolean;
+    /**
+     * On open, the reader is first probed with 25H (read the oldest event log, which consumes nothing); only when it
+     * does not answer within this time is it assumed stuck and sent the zero burst. Default 1000 ms. A timeout while
+     * running only fails its request: recovery happens when reopening, e.g. after the application restarted.
+     */
+    probeTimeoutMs?: number;
     /** errors raised by the serial port itself (unplugged adapter, ...) */
     onSerialError?: (err: Error) => void | Promise<void>;
 }
@@ -66,7 +74,8 @@ export class SoyalDeviceController {
     private readonly serialOptions: SerialPortOpenOptions<any>;
     private readonly requestTimeoutMs: number;
     private readonly interTransactionDelayMs: number;
-    private readonly flushOnOpen: boolean;
+    private readonly checkReaderOnOpen: boolean;
+    private readonly probeTimeoutMs: number;
     private readonly onSerialError?: (err: Error) => void | Promise<void>;
 
     private port: SerialPortStream<any> | null = null;
@@ -96,7 +105,8 @@ export class SoyalDeviceController {
         };
         this.requestTimeoutMs = options.requestTimeoutMs ?? 3000;
         this.interTransactionDelayMs = options.interTransactionDelayMs ?? 20;
-        this.flushOnOpen = options.flushOnOpen ?? true;
+        this.checkReaderOnOpen = options.checkReaderOnOpen ?? true;
+        this.probeTimeoutMs = options.probeTimeoutMs ?? 1000;
         this.onSerialError = options.onSerialError;
         this.parser = new SoyalFrameParser(header);
     }
@@ -132,11 +142,16 @@ export class SoyalDeviceController {
             await this.onSerialError?.(err);
         });
 
-        this.port = port;
-
-        if (this.flushOnOpen) {
-            await this.flush();
+        if (this.checkReaderOnOpen) {
+            try {
+                await this.checkReader(port);
+            } catch (err) {
+                port.close();
+                throw err;
+            }
         }
+
+        this.port = port;
     }
 
     /**
@@ -196,7 +211,8 @@ export class SoyalDeviceController {
 
     /**
      * Queue a request, resolves with the response frame, or undefined when no response is expected.
-     * Rejects with {@link DeviceNoResponse} on timeout, after the link is flushed.
+     * Rejects with {@link DeviceNoResponse} on timeout; nothing else is sent, a reader which keeps timing out is
+     * recovered by reopening the controller.
      */
     public transact(packet: Uint8Array, options: TransactionOptions = {}): Promise<Uint8Array | undefined> {
         if (this.port === null) {
@@ -222,10 +238,35 @@ export class SoyalDeviceController {
     }
 
     /**
-     * Release a reader stuck in a half received frame (e.g. after a cable issue), queued like a transaction.
+     * Make sure the reader listens: probe it, and only when it does not answer (it may be stuck in a half received
+     * frame, e.g. after a cable issue) send the zero burst.
      */
-    public async flush(): Promise<void> {
-        await this.transact(new Uint8Array(SoyalDeviceController.FLUSH_LENGTH), {expectResponse: false});
+    private async checkReader(port: SerialPortStream<any>): Promise<void> {
+        this.parser.reset();
+        if (await this.probe(port)) {
+            return;
+        }
+
+        console.warn("[SOYAL_CONTROLLER] The reader does not answer, flushing the link");
+        this.parser.reset();
+        await this.write(new Uint8Array(SoyalDeviceController.FLUSH_LENGTH), port);
+    }
+
+    private async probe(port: SerialPortStream<any>): Promise<boolean> {
+        const command = new SoyalCommand(SoyalCommandCode.GET_OLDEST_DEVICE_EVENT_LOG_25H,
+            new GetOldestDeviceEventLogCommand25H());
+        await this.write(new SoyalProtocol(this.header, this.deviceID, command.serialize()).serialize(), port);
+
+        try {
+            // any answer of this reader proves it listens: an ACK (no event) or an event log
+            await this.waitFrame(this.probeTimeoutMs, this.deviceID);
+            return true;
+        } catch (err) {
+            if (err instanceof DeviceNoResponse) {
+                return false;
+            }
+            throw err;
+        }
     }
 
     private nextTransaction(): Transaction | undefined {
@@ -268,19 +309,18 @@ export class SoyalDeviceController {
         }
 
         try {
-            return await this.waitFrame(transaction);
+            return await this.waitFrame(transaction.timeoutMs, transaction.expectedReaderID,
+                transaction.expectedFunctionCodes);
         } catch (err) {
             if (err instanceof DeviceNoResponse) {
-                // the request may have been swallowed by a stuck reader, release it for the next transaction
+                // drop what was received of the missing answer; recovering a stuck reader is left to reopening
                 this.parser.reset();
-                await this.write(new Uint8Array(SoyalDeviceController.FLUSH_LENGTH));
             }
             throw err;
         }
     }
 
-    private write(data: Uint8Array): Promise<void> {
-        const port = this.port;
+    private write(data: Uint8Array, port: SerialPortStream<any> | null = this.port): Promise<void> {
         if (port === null) {
             return Promise.reject(new Error("controller is closed"));
         }
@@ -290,22 +330,23 @@ export class SoyalDeviceController {
         });
     }
 
-    private waitFrame(transaction: Transaction): Promise<Uint8Array> {
+    private waitFrame(timeoutMs: number, expectedReaderID: number,
+                      expectedFunctionCodes?: readonly number[]): Promise<Uint8Array> {
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
                 this.frameWaiter = null; // a late response must not be taken by the next transaction
                 reject(new DeviceNoResponse("Device request timed out."));
-            }, transaction.timeoutMs);
+            }, timeoutMs);
 
             this.frameWaiter = frame => {
                 // [head] [length] [destination] [function code] [reader ID] ...
                 const functionCode = frame[this.header.length + 2];
                 const readerID = frame[this.header.length + 3];
-                if (readerID !== transaction.expectedReaderID) {
+                if (readerID !== expectedReaderID) {
                     SoyalDeviceController.warnDiscarded("foreign reader", frame);
                     return;
                 }
-                if (transaction.expectedFunctionCodes && !transaction.expectedFunctionCodes.includes(functionCode)) {
+                if (expectedFunctionCodes && !expectedFunctionCodes.includes(functionCode)) {
                     SoyalDeviceController.warnDiscarded("unexpected function code", frame);
                     return;
                 }

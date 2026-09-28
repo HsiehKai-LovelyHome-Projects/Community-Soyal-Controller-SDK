@@ -77,6 +77,9 @@ Findings from real devices that are not, or not clearly, in the protocol documen
   a different layout that could open the door on every poll.
 - A reader interrupted in the middle of a frame waits for the missing bytes and ignores everything else. Zeros are
   ignored by an idle reader, so a burst of 257 `0x00` releases a stuck one without side effects.
+  `SoyalDeviceController` sends it when opening, only if the reader does not answer a 25H probe (it reads the event
+  log without consuming the card or keypad event 18H would report). A timeout while running only fails its request:
+  reopen the controller (e.g. restart the application) to recover a reader which keeps timing out.
 - 2AH carries 30 bytes per time zone (the 2 reserved bytes are not transmitted).
 - The event log is always 26 bytes; the "no event" answer of 25H is an ACK, whose function code 04H collides with the
   time zone error event code.

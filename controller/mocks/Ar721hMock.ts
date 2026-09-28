@@ -108,7 +108,7 @@ export class Ar721hMock extends SerialPortMock {
     }
 
     private emitToHost(bytes: Uint8Array) {
-        if (this.port) {
+        if (this.port && this.isOpen) { // bytes sent to a closed port are lost
             this.port.emitData(Buffer.from(bytes));
         }
     }

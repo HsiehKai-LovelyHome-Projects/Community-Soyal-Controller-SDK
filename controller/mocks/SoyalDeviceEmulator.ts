@@ -113,6 +113,8 @@ export class SoyalDeviceEmulator {
     // ----- observation & fault injection -----
     public readonly receivedCommands: ReceivedCommand[] = [];
     public checksumErrorCount = 0;
+    /** every byte received from the host, e.g. to tell whether a zero burst was sent */
+    public bytesReceived = 0;
     /** the next N responses are silently discarded (the command is still executed) */
     public responsesToDrop = 0;
     /** the device executes commands but never answers */
@@ -160,6 +162,7 @@ export class SoyalDeviceEmulator {
      */
     public receive(bytes: Uint8Array): Uint8Array[] {
         const responses: Uint8Array[] = [];
+        this.bytesReceived += bytes.length;
 
         for (const byte of bytes) {
             switch (this.rxState) {
