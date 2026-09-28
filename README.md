@@ -85,7 +85,8 @@ Findings from real devices that are not, or not clearly, in the protocol documen
 
 ```sh
 yarn install
-yarn test
+yarn typecheck   # TypeScript 7 (tsc)
+yarn test        # jest, transpiled by babel
 yarn build
 ```
 

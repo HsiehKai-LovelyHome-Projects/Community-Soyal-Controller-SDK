@@ -1,5 +1,5 @@
+// TypeScript is transpiled by babel-jest (babel.config.js), type checking is `yarn typecheck`
 module.exports = {
-    preset: "ts-jest",
     testEnvironment: "node",
     testPathIgnorePatterns: ["/node_modules/", "/dist/"],
 };

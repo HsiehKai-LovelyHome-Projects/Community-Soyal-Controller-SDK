@@ -1,7 +1,7 @@
 {
   "name": "community-soyal-controller-sdk",
   "version": "0.1.0",
-  "description": "Community TypeScript SDK for the RS-485 protocol of SOYAL® AR-721H / AR-725H / AR-727H access controllers. Not affiliated with SOYAL Technology Co., Ltd.",
+  "description": "Community TypeScript SDK for the RS-485 protocol of SOYAL簧 AR-721H / AR-725H / AR-727H access controllers. Not affiliated with SOYAL Technology Co., Ltd.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -26,6 +26,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "test": "jest"
   },
   "dependencies": {
@@ -33,10 +34,13 @@
     "serialport": "^11.0.1"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.0",
+    "@babel/preset-env": "^7.28.0",
+    "@babel/preset-typescript": "^7.27.0",
     "@jest/globals": "^29.6.2",
-    "@types/node": "^20.4.9",
+    "@types/node": "^20.19.0",
+    "babel-jest": "^29.7.0",
     "jest": "^29.6.2",
-    "ts-jest": "^29.1.1",
-    "typescript": "^5.1.6"
+    "typescript": "^7.0.2"
   }
 }
