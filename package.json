@@ -1,7 +1,7 @@
 {
   "name": "community-soyal-controller-sdk",
   "version": "0.1.0",
-  "description": "Community TypeScript SDK for the RS-485 protocol of SOYAL簧 AR-721H / AR-725H / AR-727H access controllers. Not affiliated with SOYAL Technology Co., Ltd.",
+  "description": "Community TypeScript SDK for the RS-485 protocol of SOYAL® AR-721H / AR-725H / AR-727H access controllers. Not affiliated with SOYAL Technology Co., Ltd.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
